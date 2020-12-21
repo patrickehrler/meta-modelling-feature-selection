@@ -1,23 +1,22 @@
+from sklearn.utils.validation import check_random_state
+from skopt.learning.gaussian_process.gpr import GaussianProcessRegressor
+from skopt.learning.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
+                                                     ExpSineSquared, DotProduct,
+                                                     ConstantKernel, HammingKernel)
 from skopt.space import Integer, Real
-from skopt import gp_minimize
+from skopt.optimizer import base_minimize
 from sklearn.linear_model import LinearRegression
 from itertools import compress
 import numpy as np
+from skopt.utils import cook_estimator
 
 
-def skopt(data, target, n_features=None, discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123):
-    # create feature space
-    space = []
-    if discretization_method == "binary":  # use binary skopt Integer values
-        for feature_name in data.columns:
-            space.append(Integer(0, 1, name=feature_name))
-    elif discretization_method == "round" or discretization_method == "n_highest":  # round real number (0,1)
-        for feature_name in data.columns:
-            space.append(Real(0, 1, name=feature_name))
-
+def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
     # define black box function
     def black_box_function(*args):
         input = args[0]
+
+        # apply discretization method on value to be evaluated (TODO: put to separate function)
         mask = [0 for i in range(len(data.columns))]
         if discretization_method == "round":
             mask = list(map(lambda x: round(x), input))
@@ -34,7 +33,6 @@ def skopt(data, target, n_features=None, discretization_method="round", estimato
                 print("Error: n_features is not defined")
         else:
             mask = input
-        # TODO: more methods (kernels, ...)
 
         # create list of selected features
         selected_features = list(compress(data.columns, mask))
@@ -46,18 +44,55 @@ def skopt(data, target, n_features=None, discretization_method="round", estimato
         score = 1-model.score(filtered_data, target)
 
         return score
+    
+    # create feature space
+    space = []
+    if discretization_method == "binary":  # use binary (Integer) values
+        for feature_name in data.columns:
+            space.append(Integer(0, 1, name=feature_name)) # use real values in range (0,1)
+    elif discretization_method == "round" or discretization_method == "n_highest":
+        for feature_name in data.columns:
+            space.append(Real(0, 1, name=feature_name))
 
+    # define base estimator
+    if kernel is not None:
+        if learning_method is not "GP": # gaussian processes
+             # TODO: Can random forests, ... also use different kernels?
+            print('Error: Kerels can only be used with Gaussian Processes. GP will be used.')
+        if kernel == "MATERN":
+            base_estimator=GaussianProcessRegressor(Matern())
+        elif kernel == "HAMMING":
+            base_estimator=GaussianProcessRegressor(HammingKernel())
+        else:
+            print('Error: Invalid kernel. Matern Kernel is used.')
+            base_estimator=GaussianProcessRegressor(Matern())
+    else:
+        rng = check_random_state(random_state)
+        if learning_method == "GP":
+            # As implemented in gp_minimize (https://github.com/scikit-optimize/scikit-optimize/blob/de32b5f/skopt/optimizer/gp.py#L12)
+            base_estimator=cook_estimator(
+                learning_method, space=space, random_state=rng.randint(0, np.iinfo(np.int32).max),
+                noise=noise)
+        else:
+            base_estimator=cook_estimator(
+                learning_method, space=space, random_state=rng.randint(0, np.iinfo(np.int32).max))
+    
     # run bayesian optimization
-    optimizer = gp_minimize(black_box_function,  # the function to minimize
-                                  space,      # the bounds on each dimension of x
-                                  acq_func=acq_func,      # the acquisition function
-                                  n_calls=n_calls,         # the number of evaluations of f
-                                  n_random_starts=n_random_starts,  # the number of random initialization points
-                                  random_state=random_state,  # the random seed
-                                  verbose=False)
+    optimizer = base_minimize(
+        func=black_box_function,  # the function to minimize
+        base_estimator=base_estimator,
+        dimensions=space,      # the bounds on each dimension of x
+        acq_func=acq_func,      # the acquisition function
+        acq_optimizer="auto",   # configured on the basis of the space searched over
+        n_calls=n_calls,         # the number of evaluations of f
+        n_random_starts=n_random_starts,  # the number of random initialization points
+        random_state=random_state,  # the random seed
+        verbose=False
+    )
 
     result_score = 1-optimizer.fun
 
+    # apply discretization method on result (TODO: put to separate function)
     if discretization_method == "round":
         result_vector = list(map(lambda x: round(x), optimizer.x))
     elif discretization_method == "n_highest":
@@ -72,5 +107,5 @@ def skopt(data, target, n_features=None, discretization_method="round", estimato
             result_x[max_index] = 0
     else:
         result_vector = optimizer.x
-    
+
     return result_score, result_vector
