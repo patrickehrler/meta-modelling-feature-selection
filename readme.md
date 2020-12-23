@@ -1,1 +1,1 @@
-# Feature Selection usinf Bayesian Optimization Experiment
+# Feature Selection using Bayesian Optimization Experiment
