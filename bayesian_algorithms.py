@@ -58,7 +58,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     if kernel is not None:
         if learning_method is not "GP": # gaussian processes
              # TODO: Can random forests, ... also use different kernels?
-            print('Error: Kerels can only be used with Gaussian Processes. GP will be used.')
+            print('Error: Kernels can only be used with Gaussian Processes. GP will be used.')
         if kernel == "MATERN":
             base_estimator=GaussianProcessRegressor(Matern())
         elif kernel == "HAMMING":
