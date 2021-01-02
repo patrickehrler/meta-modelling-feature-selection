@@ -10,8 +10,13 @@ from itertools import compress
 import numpy as np
 from skopt.utils import cook_estimator
 
+def run_bayesian_algorithm(type="SKOPT", **kwargs):
+    if type == "SKOPT":
+        return __skopt(**kwargs)
+    else:
+        print("Error: Undefined Bayesian Algorithm")
 
-def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
+def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
     # define black box function
     def black_box_function(*args):
         input = args[0]

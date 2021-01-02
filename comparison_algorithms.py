@@ -2,7 +2,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.feature_selection import RFE
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 
-def run_comparison_algorithm(type="rfe", **kwargs):
+def run_comparison_algorithm(type="RFE", **kwargs):
     if type == "RFE":
         return __rfe(**kwargs)
     elif type == "SFS":
