@@ -11,13 +11,27 @@ def run_comparison_algorithm(type="RFE", **kwargs):
         print("Error: Undefined Comparison Algorithm")
 
 
-def __sfs(data, target, n_features=10, step_size=1, estimator=LinearRegression()):
+def __sfs(data, target, n_features=None, estimator=LinearRegression()):
+    """ Run Sequential Feature Selection
+    
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to be selected; if 'None' then best cross-validation result is selected
+    estimator -- estimator used to determine score
+    
+    """
+    if n_features == None:
+        n_features = "best"
+
+    # https://rasbt.github.io/mlxtend/user_guide/feature_selection/SequentialFeatureSelector/
     sfs_selection = SFS(estimator,
           k_features=n_features,
           forward=True,
-          floating=False,
-          scoring = 'r2',
-          cv = 0)
+          verbose=0,
+          #scoring = 'r2', # use sklearn regressor 
+          cv = 0 # no cross validation # TODO: if cross-validation is on, score is smaller than expected
+          )
     sfs_selection.fit(data,target)
     
     result_score = sfs_selection.k_score_
@@ -29,10 +43,19 @@ def __sfs(data, target, n_features=10, step_size=1, estimator=LinearRegression()
     return result_score, result_vector
 
 
-def __rfe(data, target, n_features=10, step_size=1, estimator=LinearRegression()):
+def __rfe(data, target, n_features=10, estimator=LinearRegression()):
+    """ Run Recursive Feature Selection
+    
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to be selected; if 'None' then 10 features will be selected
+    estimator -- estimator used to determine score
+    
+    """
     rfe_selection = RFE(estimator=estimator,
-                        n_features_to_select=n_features,
-                        step=step_size)
+                        n_features_to_select=n_features
+                    )
     
     rfe_selection.fit(data, target)
 

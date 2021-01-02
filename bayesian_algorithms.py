@@ -16,11 +16,11 @@ def run_bayesian_algorithm(type="SKOPT", **kwargs):
     else:
         print("Error: Undefined Bayesian Algorithm")
 
+
 def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
     # define black box function
     def black_box_function(*args):
         input = args[0]
-
         # apply discretization method on value to be evaluated (TODO: put to separate function)
         mask = [0 for i in range(len(data.columns))]
         if discretization_method == "round":
@@ -65,22 +65,27 @@ def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", di
              # TODO: Can random forests, ... also use different kernels?
             print('Error: Kernels can only be used with Gaussian Processes. GP will be used.')
         if kernel == "MATERN":
-            base_estimator=GaussianProcessRegressor(Matern())
+            base_estimator=GaussianProcessRegressor(1.0 * Matern())
         elif kernel == "HAMMING":
-            base_estimator=GaussianProcessRegressor(HammingKernel())
+            base_estimator=GaussianProcessRegressor(1.0 * HammingKernel())
+        elif kernel == "RBF":
+            base_estimator=GaussianProcessRegressor(1.0 * RBF()) # https://blogs.sas.com/content/iml/2018/09/26/radial-basis-functions-gaussian-kernels.html (basically squared distance)
         else:
             print('Error: Invalid kernel. Matern Kernel is used.')
             base_estimator=GaussianProcessRegressor(Matern())
     else:
-        rng = check_random_state(random_state)
-        if learning_method == "GP":
-            # As implemented in gp_minimize (https://github.com/scikit-optimize/scikit-optimize/blob/de32b5f/skopt/optimizer/gp.py#L12)
-            base_estimator=cook_estimator(
-                learning_method, space=space, random_state=rng.randint(0, np.iinfo(np.int32).max),
-                noise=noise)
+        if learning_method is not "GP":
+            rng = check_random_state(random_state)
+            if learning_method == "GP":
+                # As implemented in gp_minimize (https://github.com/scikit-optimize/scikit-optimize/blob/de32b5f/skopt/optimizer/gp.py#L12)
+                base_estimator=cook_estimator(
+                    learning_method, space=space, random_state=rng.randint(0, np.iinfo(np.int32).max),
+                    noise=noise)
+            else:
+                base_estimator=cook_estimator(
+                    learning_method, space=space, random_state=rng.randint(0, np.iinfo(np.int32).max))
         else:
-            base_estimator=cook_estimator(
-                learning_method, space=space, random_state=rng.randint(0, np.iinfo(np.int32).max))
+           print('Error: Kernels can only be used with Gaussian Processes. Please change parameter learning_method.') 
     
     # run bayesian optimization
     optimizer = base_minimize(
