@@ -29,13 +29,13 @@ def __sfs(data, target, n_features=None, estimator=LinearRegression()):
           k_features=n_features,
           forward=True,
           verbose=0,
-          #scoring = 'r2', # use sklearn regressor 
           cv = 0 # no cross validation # TODO: if cross-validation is on, score is smaller than expected
           )
     sfs_selection.fit(data,target)
     
     result_score = sfs_selection.k_score_
     
+    # convert feature-id-array to 0/1 vector
     result_vector = [0 for element in range(len(data.columns))]
     for index in sfs_selection.k_feature_idx_:
         result_vector[index] = 1
@@ -60,6 +60,8 @@ def __rfe(data, target, n_features=10, estimator=LinearRegression()):
     rfe_selection.fit(data, target)
 
     result_score = rfe_selection.score(data, target)
+
+    # convert True/False result-vector to 0/1 vector
     result_vector=[]
     for el in rfe_selection.support_:
         if el == False:

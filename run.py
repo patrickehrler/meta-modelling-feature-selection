@@ -43,18 +43,20 @@ comparison_approaches = {
 # Dataset with 30 features (https://www.openml.org/d/1510)
 #X, y = fetch_openml('wdbc', return_X_y=True, as_frame=True)
 # Dataset with 10000 features (https://www.openml.org/d/1458)
-X, y = fetch_openml('arcene', return_X_y=True, as_frame=True)
+# dataset with 500 features
+X, y = fetch_openml(data_id=1485, return_X_y=True, as_frame=True)
 print('Dataset downloaded')
 nr_of_features = len(X.columns)
 
 
-# TODO: test RBF kernel with binary space? How does it wor? Why does is work???
+# TODO: Why does RBF kernel work with binary search space?
 
 
 
 def __debug():
-    score1, vector1 = run_bayesian_algorithm(type="SKOPT", data=X, target=y, kernel="MATERN", n_calls=n_calls, learning_method="GP", discretization_method="round")
-    #score2, vector2 = run_comparison_algorithm(type="RFE", data=X, target=y, n_features=30)
+    score1, vector1 = run_bayesian_algorithm(type="SKOPT", data=X, target=y, learning_method="RF")
+    #score2, vector2 = run_comparison_algorithm(type="SFS", data=X, target=y, n_features=2)
+
     print(score1)
     #print(score2)
     print(vector1)

@@ -1,8 +1,10 @@
 from sklearn.utils.validation import check_random_state
+from skopt.learning.forest import ExtraTreesRegressor, RandomForestRegressor
 from skopt.learning.gaussian_process.gpr import GaussianProcessRegressor
 from skopt.learning.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
                                                      ExpSineSquared, DotProduct,
                                                      ConstantKernel, HammingKernel)
+from skopt.learning.gbrt import GradientBoostingQuantileRegressor
 from skopt.space import Integer, Real
 from skopt.optimizer import base_minimize
 from sklearn.linear_model import LinearRegression
@@ -18,6 +20,21 @@ def run_bayesian_algorithm(type="SKOPT", **kwargs):
 
 
 def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
+    """ Run Scikit-Optimize Implementation of Bayesian Optimization
+    
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to be selected; if 'None' then best result is selected
+    estimator -- estimator used to determine score
+    discretization_method -- define method on how to work with search space
+    acq_func -- aquisition function to be used
+    n_calls -- number of iterations
+    n_random_starts -- 
+    random_state -- 
+    noise -- 
+
+    """
     # define black box function
     def black_box_function(*args):
         input = args[0]
@@ -60,10 +77,11 @@ def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", di
             space.append(Real(0, 1, name=feature_name))
 
     # define base estimator
+    base_estimator=None
     if kernel is not None:
         if learning_method is not "GP": # gaussian processes
              # TODO: Can random forests, ... also use different kernels?
-            print('Error: Kernels can only be used with Gaussian Processes. GP will be used.')
+            print('Warning: Kernels can only be used with Gaussian Processes. GP will be used.')
         if kernel == "MATERN":
             base_estimator=GaussianProcessRegressor(1.0 * Matern())
         elif kernel == "HAMMING":
@@ -72,20 +90,24 @@ def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", di
             base_estimator=GaussianProcessRegressor(1.0 * RBF()) # https://blogs.sas.com/content/iml/2018/09/26/radial-basis-functions-gaussian-kernels.html (basically squared distance)
         else:
             print('Error: Invalid kernel. Matern Kernel is used.')
-            base_estimator=GaussianProcessRegressor(Matern())
+            base_estimator=GaussianProcessRegressor(1.0 * Matern())
     else:
-        if learning_method is not "GP":
+        if learning_method is "RF":
+            base_estimator=RandomForestRegressor()
+        elif learning_method is "ET":
+            base_estimator=ExtraTreesRegressor()
+        elif learning_method is "GBRT":
+            base_estimator=GradientBoostingQuantileRegressor()
+        elif learning_method is "GP":
+            # As implemented in gp_minimize (https://github.com/scikit-optimize/scikit-optimize/blob/de32b5f/skopt/optimizer/gp.py#L12)
             rng = check_random_state(random_state)
-            if learning_method == "GP":
-                # As implemented in gp_minimize (https://github.com/scikit-optimize/scikit-optimize/blob/de32b5f/skopt/optimizer/gp.py#L12)
-                base_estimator=cook_estimator(
-                    learning_method, space=space, random_state=rng.randint(0, np.iinfo(np.int32).max),
-                    noise=noise)
-            else:
-                base_estimator=cook_estimator(
-                    learning_method, space=space, random_state=rng.randint(0, np.iinfo(np.int32).max))
+            base_estimator=cook_estimator(
+                learning_method, space=space, random_state=rng.randint(0, np.iinfo(np.int32).max),
+                noise=noise)
+            print('Warning: No kernel defined for Gaussian Process. Standard kernel is used for Gaussian Process.') 
         else:
-           print('Error: Kernels can only be used with Gaussian Processes. Please change parameter learning_method.') 
+            print('Error: Undefined learning_method!') 
+            
     
     # run bayesian optimization
     optimizer = base_minimize(
@@ -97,7 +119,7 @@ def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", di
         n_calls=n_calls,         # the number of evaluations of f
         n_random_starts=n_random_starts,  # the number of random initialization points
         random_state=random_state,  # the random seed
-        verbose=False
+        verbose=True
     )
 
     result_score = 1-optimizer.fun
@@ -117,5 +139,7 @@ def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", di
             result_x[max_index] = 0
     else:
         result_vector = optimizer.x
+    
+    #print(optimizer.models)
 
     return result_score, result_vector
