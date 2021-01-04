@@ -56,22 +56,11 @@ X, y = fetch_openml('wdbc', return_X_y=True, as_frame=True)
 print('Dataset downloaded')
 nr_of_features = len(X.columns)
 
-
 # TODO Question: Why does RBF kernel work with binary search space?
 
 
-def __debug():
-    score1, vector1 = run_comparison_algorithm(type="SFM", data=X, target=y)
-    #score2, vector2 = run_comparison_algorithm(type="SFS", data=X, target=y, n_features=2)
-
-    print(score1)
-    # print(score2)
-    print(vector1)
-    # print(vector2)
-
-
 def __run_all():
-    # run all bayesian optimization techniques
+    # run all bayesian optimization approaches
     df_bay_opt = pd.DataFrame(columns=['Score', 'Vector'])
     for a, a_descr in bayesian_approaches.items():
         for lm, lm_descr in learning_methods.items():
@@ -136,4 +125,9 @@ def __run_all():
 
 
 __run_all()
+
+# def __debug():
+#    score1, vector1 = run_comparison_algorithm(type="SFM", data=X, target=y)
+#    print(score1)
+#    print(vector1)
 # __debug()

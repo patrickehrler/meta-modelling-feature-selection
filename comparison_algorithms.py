@@ -67,7 +67,7 @@ def __rfe(data, target, n_features=10, estimator=LinearRegression()):
 
     result_score = rfe_selection.score(data, target)
 
-    # convert True/False result-vector to 0/1 vector
+    # calculate result vector
     result_vector = convert_vector(rfe_selection.support_)
 
     return result_score, result_vector
@@ -89,7 +89,8 @@ def __sfm(data, target, estimator=LinearRegression()):
     result_vector = convert_vector(sfm_selection.get_support())
 
     # calculate score
-    result_score = get_score(data, target, sfm_selection.get_support(), estimator)
+    result_score = get_score(
+        data, target, sfm_selection.get_support(), estimator)
 
     return result_score, result_vector
 

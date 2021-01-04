@@ -3,4 +3,4 @@
 
     python3 run.py
 
-Results are stored in csv files.
+Bayesian Optimization results are stored in 'bay_opt.csv' and results of comparison algorithms in 'comparison.csv'.
