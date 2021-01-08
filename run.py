@@ -65,7 +65,7 @@ def __run_all():
     for a, a_descr in bayesian_approaches.items():
         for lm, lm_descr in learning_methods.items():
             for dm, dm_descr in discretization_methods.items():
-                if lm is "GP":  # kernels only for gaussian processes
+                if lm == "GP":  # kernels only for gaussian processes
                     for k, k_descr in kernels.items():
                         if dm == "n_highest":
                             for n_features in range(5, nr_of_features, 5):

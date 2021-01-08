@@ -58,7 +58,7 @@ def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", di
     # define base estimator
     base_estimator = None
     if kernel is not None:
-        if learning_method is not "GP":  # gaussian processes
+        if learning_method != "GP":  # gaussian processes
             # TODO: Can random forests, ... also use different kernels?
             print(
                 'Warning: Kernels can only be used with Gaussian Processes. GP will be used.')
@@ -73,13 +73,13 @@ def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", di
             print('Error: Invalid kernel. Matern Kernel is used.')
             base_estimator = GaussianProcessRegressor(1.0 * Matern())
     else:
-        if learning_method is "RF":
+        if learning_method == "RF":
             base_estimator = RandomForestRegressor()
-        elif learning_method is "ET":
+        elif learning_method == "ET":
             base_estimator = ExtraTreesRegressor()
-        elif learning_method is "GBRT":
+        elif learning_method == "GBRT":
             base_estimator = GradientBoostingQuantileRegressor()
-        elif learning_method is "GP":
+        elif learning_method == "GP":
             # As implemented in gp_minimize (https://github.com/scikit-optimize/scikit-optimize/blob/de32b5f/skopt/optimizer/gp.py#L12)
             rng = check_random_state(random_state)
             base_estimator = cook_estimator(
@@ -123,7 +123,7 @@ def __discretize(data, discretization_method, n_features=None):
     if discretization_method == "round":
         return list(map(lambda x: round(x), data))
     elif discretization_method == "n_highest":
-        if n_features != None:
+        if n_features is not None:
             vector = [0 for i in range(len(data))]
             for i in range(n_features):
                 # detect maximum; in case of multiple occurrences the first is used

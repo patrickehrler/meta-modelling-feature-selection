@@ -26,7 +26,7 @@ def __sfs(data, target, n_features=None, estimator=LinearRegression()):
     estimator -- estimator used to determine score
 
     """
-    if n_features == None:
+    if n_features is None:
         n_features = "best"
 
     # https://rasbt.github.io/mlxtend/user_guide/feature_selection/SequentialFeatureSelector/
