@@ -12,7 +12,7 @@ def get_score(data, target, mask, estimator):
 
     """
     selected_features = list(compress(data.columns, mask))
-    filtered_data = data[data.columns[data.columns.isin(selected_features)]]
+    filtered_data = data[selected_features]
     score = estimator.fit(filtered_data, target).score(filtered_data, target)
 
     return score
