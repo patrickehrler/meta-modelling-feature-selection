@@ -101,21 +101,16 @@ def __run_all():
                         df_bay_opt.loc[row_name] = [score, vector]
 
     # run all comparison approaches
+    # IMPORTANT: SelectionFromModel selects max n_features
     df_comparison = pd.DataFrame(columns=['Score', 'Vector'])
     for a, a_descr in comparison_approaches.items():
         for func, func_desc in a_descr.items():
-            if func == sfm:
+            for n_features in range(5, nr_of_features+1, 5):
                 score, vector = func(
-                    data=X, target=y)
-                row_name = a + ": " + func_desc
+                    data=X, target=y, n_features=n_features)
+                row_name = a + ": " + func_desc + \
+                    " (n_features=" + str(n_features) + ")"
                 df_comparison.loc[row_name] = [score, vector]
-            else:
-                for n_features in range(5, nr_of_features+1, 5):
-                    score, vector = func(
-                        data=X, target=y, n_features=n_features)
-                    row_name = a + ": " + func_desc + \
-                        " (n_features=" + str(n_features) + ")"
-                    df_comparison.loc[row_name] = [score, vector]
 
     # save results in file and print to console
     df_bay_opt.to_csv('results/bay_opt.csv', index=True)

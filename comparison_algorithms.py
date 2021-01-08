@@ -62,17 +62,18 @@ def rfe(data, target, n_features=10, estimator=LinearRegression()):
     return result_score, result_vector
 
 
-def sfm(data, target, estimator=LinearRegression()):
+def sfm(data, target, n_features=None, estimator=LinearRegression()):
     """ Run Select From Model (an embedded method)
     https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SelectFromModel.html#sklearn.feature_selection.SelectFromModel.get_support
 
     Keyword arguments:
     data -- feature matrix
     target -- regression or classification targets
+    n_features -- maximum number of features to select
     estimator -- estimator used to determine score
 
     """
-    sfm_selection = SelectFromModel(estimator=estimator).fit(data, target)
+    sfm_selection = SelectFromModel(estimator=estimator, max_features=n_features).fit(data, target)
 
     # calculate result vector
     result_vector = convert_vector(sfm_selection.get_support())
