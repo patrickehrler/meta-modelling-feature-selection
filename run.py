@@ -118,8 +118,8 @@ def __run_all():
                     df_comparison.loc[row_name] = [score, vector]
 
     # save results in file and print to console
-    df_bay_opt.to_csv('bay_opt.csv', index=True)
-    df_comparison.to_csv('comparison.csv', index=True)
+    df_bay_opt.to_csv('results/bay_opt.csv', index=True)
+    df_comparison.to_csv('results/comparison.csv', index=True)
     print(df_bay_opt)
     print(df_comparison)
 
