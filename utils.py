@@ -25,11 +25,4 @@ def convert_vector(vector):
     vector -- vector of True/False values
 
     """
-    result_vector = []
-    for el in vector:
-        if el == False:
-            result_vector.append(0)
-        else:
-            result_vector.append(1)
-
-    return result_vector
+    return [int(x) for x in vector]
