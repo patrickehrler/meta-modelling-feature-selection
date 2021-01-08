@@ -1,7 +1,7 @@
 from sklearn.linear_model import LinearRegression
 from sklearn.feature_selection import RFE, SelectFromModel
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
-from utils import get_score, convert_vector
+from utils import convert_vector
 
 
 def sfs(data, target, n_features=None, estimator=LinearRegression()):
@@ -32,9 +32,7 @@ def sfs(data, target, n_features=None, estimator=LinearRegression()):
     for index in sfs_selection.k_feature_idx_:
         result_vector[index] = 1
 
-    result_score = get_score(data, target, result_vector, estimator)
-
-    return result_score, result_vector
+    return result_vector
 
 
 def rfe(data, target, n_features=10, estimator=LinearRegression()):
@@ -57,9 +55,7 @@ def rfe(data, target, n_features=10, estimator=LinearRegression()):
     # calculate result vector
     result_vector = convert_vector(rfe_selection.support_)
 
-    result_score = get_score(data, target, result_vector, estimator)
-
-    return result_score, result_vector
+    return result_vector
 
 
 def sfm(data, target, n_features=None, estimator=LinearRegression()):
@@ -78,11 +74,7 @@ def sfm(data, target, n_features=None, estimator=LinearRegression()):
     # calculate result vector
     result_vector = convert_vector(sfm_selection.get_support())
 
-    # calculate score
-    result_score = get_score(
-        data, target, result_vector, estimator)
-
-    return result_score, result_vector
+    return result_vector
 
 
 # TODO implement more algorithms

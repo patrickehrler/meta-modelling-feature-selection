@@ -2,6 +2,7 @@ from sklearn.datasets import fetch_openml
 from comparison_algorithms import sfs, rfe, sfm
 from bayesian_algorithms import skopt
 import pandas as pd
+from utils import get_score
 
 #
 # Bayesian Optimization Settings
@@ -69,36 +70,36 @@ def __run_all():
                     for k, k_descr in kernels.items():
                         if dm == "n_highest":
                             for n_features in range(5, nr_of_features, 5):
-                                score, vector = func(
+                                vector = func(
                                     data=X, target=y, kernel=k, n_features=n_features, n_calls=n_calls, learning_method=lm, discretization_method=dm)
                                 row_name = func_descr + \
                                     " (" + lm_descr + ", " + k_descr + ", " + \
                                     dm_descr + ", n_features=" + \
                                     str(n_features) + ")"
-                                df_bay_opt.loc[row_name] = [score, vector]
+                                df_bay_opt.loc[row_name] = [get_score(X, y, vector), vector]
                         else:
-                            score, vector = func(
+                            vector = func(
                                 data=X, target=y, kernel=k, n_calls=n_calls, learning_method=lm, discretization_method=dm)
                             row_name = func_descr + \
                                 " (" + lm_descr + ", " + \
                                 k_descr + ", " + dm_descr + ")"
-                            df_bay_opt.loc[row_name] = [score, vector]
+                            df_bay_opt.loc[row_name] = [get_score(X, y, vector), vector]
 
                 else:
                     if dm == "n_highest":
                         for n_features in range(5, nr_of_features, 5):
-                            score, vector = func(
+                            vector = func(
                                 data=X, target=y, kernel=None, n_features=n_features, n_calls=n_calls, learning_method=lm, discretization_method=dm)
                             row_name = func_descr + \
                                 " (" + lm_descr + ", " + dm_descr + \
                                 ", n_features=" + str(n_features) + ")"
-                            df_bay_opt.loc[row_name] = [score, vector]
+                            df_bay_opt.loc[row_name] = [get_score(X, y, vector), vector]
                     else:
-                        score, vector = func(
+                        vector = func(
                             data=X, target=y, kernel=None, n_features=None, n_calls=n_calls, learning_method=lm, discretization_method=dm)
                         row_name = func_descr + \
                             " (" + lm_descr + ", " + dm_descr + ")"
-                        df_bay_opt.loc[row_name] = [score, vector]
+                        df_bay_opt.loc[row_name] = [get_score(X, y, vector), vector]
 
     # run all comparison approaches
     # IMPORTANT: SelectionFromModel selects max n_features
@@ -106,11 +107,11 @@ def __run_all():
     for a, a_descr in comparison_approaches.items():
         for func, func_desc in a_descr.items():
             for n_features in range(5, nr_of_features+1, 5):
-                score, vector = func(
+                vector = func(
                     data=X, target=y, n_features=n_features)
                 row_name = a + ": " + func_desc + \
                     " (n_features=" + str(n_features) + ")"
-                df_comparison.loc[row_name] = [score, vector]
+                df_comparison.loc[row_name] = [get_score(X, y, vector), vector]
 
     # save results in file and print to console
     df_bay_opt.to_csv('results/bay_opt.csv', index=True)

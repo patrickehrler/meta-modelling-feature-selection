@@ -1,7 +1,7 @@
 from itertools import compress
+from sklearn.linear_model import LinearRegression
 
-
-def get_score(data, target, mask, estimator):
+def get_score(data, target, mask, estimator=LinearRegression()):
     """ Returns score for a given feature selection and an estimator.
 
     Keyword arguments:
