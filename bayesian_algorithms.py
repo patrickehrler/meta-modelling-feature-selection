@@ -13,14 +13,7 @@ from skopt.utils import cook_estimator
 from utils import get_score
 
 
-def run_bayesian_algorithm(type="SKOPT", **kwargs):
-    if type == "SKOPT":
-        return __skopt(**kwargs)
-    else:
-        raise ValueError("Undefined Bayesian Algorithm")
-
-
-def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
+def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
     """ Run Scikit-Optimize Implementation of Bayesian Optimization
 
     Keyword arguments:

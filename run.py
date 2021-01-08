@@ -1,13 +1,13 @@
 from sklearn.datasets import fetch_openml
-from comparison_algorithms import run_comparison_algorithm
-from bayesian_algorithms import run_bayesian_algorithm
+from comparison_algorithms import sfs, rfe, sfm
+from bayesian_algorithms import skopt
 import pandas as pd
 
 #
 # Bayesian Optimization Settings
 #
 bayesian_approaches = {
-    "SKOPT": "Scikit Optimize"
+    skopt: "Scikit Optimize"
 }
 learning_methods = {
     "GP": "Gaussian Process",
@@ -33,11 +33,11 @@ n_calls = 20  # number of iterations (bayesian optimization)
 #
 comparison_approaches = {
     "wrapper": {
-        "SFS": "Sequential Feature Selection",
-        "RFE": "Recursive Feature Selection"
+        sfs: "Sequential Feature Selection",
+        rfe: "Recursive Feature Selection"
     },
     "embedded": {
-        "SFM": "Select From Model"
+        sfm: "Select From Model"
     }
 }
 
@@ -62,24 +62,24 @@ nr_of_features = len(X.columns)
 def __run_all():
     # run all bayesian optimization approaches
     df_bay_opt = pd.DataFrame(columns=['Score', 'Vector'])
-    for a, a_descr in bayesian_approaches.items():
+    for func, func_descr in bayesian_approaches.items():
         for lm, lm_descr in learning_methods.items():
             for dm, dm_descr in discretization_methods.items():
                 if lm == "GP":  # kernels only for gaussian processes
                     for k, k_descr in kernels.items():
                         if dm == "n_highest":
                             for n_features in range(5, nr_of_features, 5):
-                                score, vector = run_bayesian_algorithm(
-                                    type=a, data=X, target=y, kernel=k, n_features=n_features, n_calls=n_calls, learning_method=lm, discretization_method=dm)
-                                row_name = a_descr + \
+                                score, vector = func(
+                                    data=X, target=y, kernel=k, n_features=n_features, n_calls=n_calls, learning_method=lm, discretization_method=dm)
+                                row_name = func_descr + \
                                     " (" + lm_descr + ", " + k_descr + ", " + \
                                     dm_descr + ", n_features=" + \
                                     str(n_features) + ")"
                                 df_bay_opt.loc[row_name] = [score, vector]
                         else:
-                            score, vector = run_bayesian_algorithm(
-                                type=a, data=X, target=y, kernel=k, n_calls=n_calls, learning_method=lm, discretization_method=dm)
-                            row_name = a_descr + \
+                            score, vector = func(
+                                data=X, target=y, kernel=k, n_calls=n_calls, learning_method=lm, discretization_method=dm)
+                            row_name = func_descr + \
                                 " (" + lm_descr + ", " + \
                                 k_descr + ", " + dm_descr + ")"
                             df_bay_opt.loc[row_name] = [score, vector]
@@ -87,33 +87,33 @@ def __run_all():
                 else:
                     if dm == "n_highest":
                         for n_features in range(5, nr_of_features, 5):
-                            score, vector = run_bayesian_algorithm(
-                                type=a, data=X, target=y, kernel=None, n_features=n_features, n_calls=n_calls, learning_method=lm, discretization_method=dm)
-                            row_name = a_descr + \
+                            score, vector = func(
+                                data=X, target=y, kernel=None, n_features=n_features, n_calls=n_calls, learning_method=lm, discretization_method=dm)
+                            row_name = func_descr + \
                                 " (" + lm_descr + ", " + dm_descr + \
                                 ", n_features=" + str(n_features) + ")"
                             df_bay_opt.loc[row_name] = [score, vector]
                     else:
-                        score, vector = run_bayesian_algorithm(
-                            type=a, data=X, target=y, kernel=None, n_features=None, n_calls=n_calls, learning_method=lm, discretization_method=dm)
-                        row_name = a_descr + \
+                        score, vector = func(
+                            data=X, target=y, kernel=None, n_features=None, n_calls=n_calls, learning_method=lm, discretization_method=dm)
+                        row_name = func_descr + \
                             " (" + lm_descr + ", " + dm_descr + ")"
                         df_bay_opt.loc[row_name] = [score, vector]
 
     # run all comparison approaches
     df_comparison = pd.DataFrame(columns=['Score', 'Vector'])
     for a, a_descr in comparison_approaches.items():
-        for b, b_desc in a_descr.items():
-            if b == "SFM":
-                score, vector = run_comparison_algorithm(
-                    type=b, data=X, target=y)
-                row_name = a + ": " + b_desc
+        for func, func_desc in a_descr.items():
+            if func == sfm:
+                score, vector = func(
+                    data=X, target=y)
+                row_name = a + ": " + func_desc
                 df_comparison.loc[row_name] = [score, vector]
             else:
                 for n_features in range(5, nr_of_features+1, 5):
-                    score, vector = run_comparison_algorithm(
-                        type=b, data=X, target=y, n_features=n_features)
-                    row_name = a + ": " + b_desc + \
+                    score, vector = func(
+                        data=X, target=y, n_features=n_features)
+                    row_name = a + ": " + func_desc + \
                         " (n_features=" + str(n_features) + ")"
                     df_comparison.loc[row_name] = [score, vector]
 

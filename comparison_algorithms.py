@@ -4,18 +4,7 @@ from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from utils import get_score, convert_vector
 
 
-def run_comparison_algorithm(type="RFE", **kwargs):
-    if type == "RFE":
-        return __rfe(**kwargs)
-    elif type == "SFS":
-        return __sfs(**kwargs)
-    elif type == "SFM":
-        return __sfm(**kwargs)
-    else:
-        raise ValueError("Undefined Comparison Algorithm")
-
-
-def __sfs(data, target, n_features=None, estimator=LinearRegression()):
+def sfs(data, target, n_features=None, estimator=LinearRegression()):
     """ Run Sequential Feature Selection (a wrapper method)
     https://rasbt.github.io/mlxtend/user_guide/feature_selection/SequentialFeatureSelector/
 
@@ -41,14 +30,14 @@ def __sfs(data, target, n_features=None, estimator=LinearRegression()):
     result_score = sfs_selection.k_score_
 
     # convert feature-id-array to 0/1 vector
-    result_vector = [0 for element in range(len(data.columns))]
+    result_vector = [0 for _ in range(len(data.columns))]
     for index in sfs_selection.k_feature_idx_:
         result_vector[index] = 1
 
     return result_score, result_vector
 
 
-def __rfe(data, target, n_features=10, estimator=LinearRegression()):
+def rfe(data, target, n_features=10, estimator=LinearRegression()):
     """ Run Recursive Feature Selection (a wrapper method)
     https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.RFE.html#sklearn.feature_selection.RFE
 
@@ -73,7 +62,7 @@ def __rfe(data, target, n_features=10, estimator=LinearRegression()):
     return result_score, result_vector
 
 
-def __sfm(data, target, estimator=LinearRegression()):
+def sfm(data, target, estimator=LinearRegression()):
     """ Run Select From Model (an embedded method)
     https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SelectFromModel.html#sklearn.feature_selection.SelectFromModel.get_support
 
