@@ -27,12 +27,12 @@ def sfs(data, target, n_features=None, estimator=LinearRegression()):
                         )
     sfs_selection.fit(data, target)
 
-    result_score = sfs_selection.k_score_
-
     # convert feature-id-array to 0/1 vector
     result_vector = [0 for _ in range(len(data.columns))]
     for index in sfs_selection.k_feature_idx_:
         result_vector[index] = 1
+
+    result_score = get_score(data, target, result_vector, estimator)
 
     return result_score, result_vector
 
@@ -54,10 +54,10 @@ def rfe(data, target, n_features=10, estimator=LinearRegression()):
 
     rfe_selection.fit(data, target)
 
-    result_score = rfe_selection.score(data, target)
-
     # calculate result vector
     result_vector = convert_vector(rfe_selection.support_)
+
+    result_score = get_score(data, target, result_vector, estimator)
 
     return result_score, result_vector
 
@@ -79,7 +79,7 @@ def sfm(data, target, estimator=LinearRegression()):
 
     # calculate score
     result_score = get_score(
-        data, target, sfm_selection.get_support(), estimator)
+        data, target, result_vector, estimator)
 
     return result_score, result_vector
 

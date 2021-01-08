@@ -96,9 +96,10 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         verbose=False
     )
 
-    result_score = 1-optimizer.fun
     result_vector = __discretize(
         optimizer.x, discretization_method, n_features)
+
+    result_score = get_score(data, target, result_vector, estimator)
 
     return result_score, result_vector
 
