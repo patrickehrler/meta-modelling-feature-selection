@@ -17,7 +17,7 @@ def run_bayesian_algorithm(type="SKOPT", **kwargs):
     if type == "SKOPT":
         return __skopt(**kwargs)
     else:
-        print("Error: Undefined Bayesian Algorithm")
+        raise ValueError("Undefined Bayesian Algorithm")
 
 
 def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
@@ -58,20 +58,19 @@ def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", di
     # define base estimator
     base_estimator = None
     if kernel is not None:
-        if learning_method != "GP":  # gaussian processes
-            # TODO: Can random forests, ... also use different kernels?
-            print(
-                'Warning: Kernels can only be used with Gaussian Processes. GP will be used.')
-        if kernel == "MATERN":
-            base_estimator = GaussianProcessRegressor(1.0 * Matern())
-        elif kernel == "HAMMING":
-            base_estimator = GaussianProcessRegressor(1.0 * HammingKernel())
-        elif kernel == "RBF":
-            # https://blogs.sas.com/content/iml/2018/09/26/radial-basis-functions-gaussian-kernels.html (basically squared distance)
-            base_estimator = GaussianProcessRegressor(1.0 * RBF())
+        if learning_method == "GP":
+            if kernel == "MATERN":
+                base_estimator = GaussianProcessRegressor(1.0 * Matern())
+            elif kernel == "HAMMING":
+                base_estimator = GaussianProcessRegressor(1.0 * HammingKernel())
+            elif kernel == "RBF":
+                # https://blogs.sas.com/content/iml/2018/09/26/radial-basis-functions-gaussian-kernels.html (basically squared distance)
+                base_estimator = GaussianProcessRegressor(1.0 * RBF())
+            else:
+                raise ValueError("Invalid kernel.")
         else:
-            print('Error: Invalid kernel. Matern Kernel is used.')
-            base_estimator = GaussianProcessRegressor(1.0 * Matern())
+            # TODO: Can random forests, ... also use different kernels?
+            raise ValueError("Kernels can only be used with Gaussian Processes.")
     else:
         if learning_method == "RF":
             base_estimator = RandomForestRegressor()
@@ -87,9 +86,9 @@ def __skopt(data, target, n_features=None, kernel=None, learning_method="GP", di
                     0, np.iinfo(np.int32).max),
                 noise=noise)
             print(
-                'Warning: No kernel defined for Gaussian Process. Standard kernel is used for Gaussian Process.')
+                'Warning: No kernel defined for Gaussian Process. Standard kernel is used.')
         else:
-            print('Error: Undefined learning_method!')
+            raise ValueError("Undefined learning method.")
 
     # run bayesian optimization
     optimizer = base_minimize(
@@ -125,7 +124,7 @@ def __discretize(data, discretization_method, n_features=None):
     elif discretization_method == "n_highest":
         if n_features is not None:
             vector = [0 for i in range(len(data))]
-            for i in range(n_features):
+            for _ in range(n_features):
                 # detect maximum; in case of multiple occurrences the first is used
                 max_index = np.argmax(data)
                 # set mask value
@@ -134,10 +133,8 @@ def __discretize(data, discretization_method, n_features=None):
                 data[max_index] = 0
             return vector
         else:
-            print("Error: n_features is not defined. Rounding is used.")
-            return __discretize(data, "round", None)
+            raise ValueError("Undefined n_features parameter.")
     elif discretization_method == "binary":
         return data
     else:
-        print("Error: Undefined discretization method. Vector is returned unchanged.")
-        return data
+        raise ValueError("Undefined discretization method.")

@@ -12,7 +12,7 @@ def run_comparison_algorithm(type="RFE", **kwargs):
     elif type == "SFM":
         return __sfm(**kwargs)
     else:
-        print("Error: Undefined Comparison Algorithm")
+        raise ValueError("Undefined Comparison Algorithm")
 
 
 def __sfs(data, target, n_features=None, estimator=LinearRegression()):
