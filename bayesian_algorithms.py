@@ -79,7 +79,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
                     0, np.iinfo(np.int32).max),
                 noise=noise)
             print(
-                'Warning: No kernel defined for Gaussian Process. Standard kernel is used.')
+                "Warning: No kernel defined for Gaussian Process. Standard kernel is used.")
         else:
             raise ValueError("Undefined learning method.")
 

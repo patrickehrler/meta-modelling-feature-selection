@@ -17,7 +17,6 @@ def get_score(data, target, mask, estimator=LinearRegression()):
 
     return score
 
-
 def convert_vector(vector):
     """ Convert True/False vector to 0/1 vector
 
@@ -26,3 +25,19 @@ def convert_vector(vector):
 
     """
     return [int(x) for x in vector]
+
+def add_cv_score(data, target, dataframe, estimator):
+    """ Calculate score for each row in dataframe and add it as a column
+
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    dataframe -- pandas dataframe with column 'Vector'
+
+    """
+    for row in dataframe.index:
+        vector = dataframe.loc[row]["Vector"]
+        score = get_score(data, target, vector, estimator)
+        dataframe.loc[row, "Testing Score"] = score
+
+    return dataframe
