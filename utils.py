@@ -26,7 +26,7 @@ def convert_vector(vector):
     """
     return [int(x) for x in vector]
 
-def add_cv_score(data, target, dataframe, estimator):
+def add_testing_score(data, target, dataframe, estimator):
     """ Calculate score for each row in dataframe and add it as a column
 
     Keyword arguments:
