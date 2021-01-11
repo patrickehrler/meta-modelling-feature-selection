@@ -1,4 +1,5 @@
 import numpy as np
+import multiprocessing as mp
 from sklearn.datasets import fetch_openml
 from comparison_algorithms import sfs, rfe, sfm
 from bayesian_algorithms import skopt
@@ -10,6 +11,8 @@ from sklearn.linear_model import LinearRegression
 ##################
 # Settings
 ##################
+# number of processes for parallelization
+n_processes = 2
 # number of splits for cross-validation
 n_splits = 2
 # number of iterations in bayesian optimization
@@ -140,9 +143,8 @@ df_bay_opt = pd.DataFrame(columns=bay_opt_parameters +
 df_comparison = pd.DataFrame(
     columns=comparison_parameters+["Vector", "Training Score", "Testing Score"])
 
-# Split dataset into testing and training data then run all approaches
-kf = KFold(n_splits=n_splits, shuffle=True)
-for train_index, test_index in kf.split(X):
+
+def run_process(train_index, test_index):
     X_train, X_test = X.loc[train_index], X.loc[test_index]
     y_train, y_test = y[train_index], y[test_index]
     #
@@ -151,16 +153,27 @@ for train_index, test_index in kf.split(X):
     df_current_bayesian = __run_all_bayesian(X_train, y_train)
     df_current_bayesian = add_testing_score(
         X_test, y_test, df_current_bayesian, estimator_test)
-    df_bay_opt = pd.concat(
-        [df_bay_opt, df_current_bayesian], ignore_index=True)
+    #df_bay_opt = pd.concat(
+    #    [df_bay_opt, df_current_bayesian], ignore_index=True)
     #
     # run all comparison approaches
     #
     df_current_comparison = __run_all_comparison(X_train, y_train)
     df_current_comparison = add_testing_score(
         X_test, y_test, df_current_comparison, estimator_test)
-    df_comparison = pd.concat(
-        [df_comparison, df_current_comparison], ignore_index=True)
+    #df_comparison = pd.concat(
+    #    [df_comparison, df_current_comparison], ignore_index=True)
+
+    return df_current_bayesian, df_current_comparison
+
+# Split dataset into testing and training data then run all approaches
+pool = mp.Pool(processes=n_processes) 
+kf = KFold(n_splits=n_splits, shuffle=True)
+# run in parallel
+df_result = [pool.apply(run_process, args=(train_index, test_index)) for train_index, test_index in kf.split(X)]
+
+df_bay_opt = pd.concat([x[0] for x in df_result])
+df_comparison = pd.concat([x[1] for x in df_result])
 
 # Write all results to csv-file
 df_bay_opt.to_csv("results/bay_opt.csv", index=False)

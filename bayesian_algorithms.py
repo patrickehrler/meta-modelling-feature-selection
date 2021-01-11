@@ -115,7 +115,7 @@ def __discretize(data, discretization_method, n_features=None):
         return list(map(lambda x: round(x), data))
     elif discretization_method == "n_highest":
         if n_features is not None:
-            vector = [0 for i in range(len(data))]
+            vector = [0 for _ in range(len(data))]
             for _ in range(n_features):
                 # detect maximum; in case of multiple occurrences the first is used
                 max_index = np.argmax(data)
