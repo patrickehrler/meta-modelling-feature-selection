@@ -1,3 +1,4 @@
+import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.feature_selection import RFE, SelectFromModel
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
@@ -65,11 +66,11 @@ def sfm(data, target, n_features=None, estimator=LinearRegression()):
     Keyword arguments:
     data -- feature matrix
     target -- regression or classification targets
-    n_features -- maximum number of features to select
+    n_features -- number of features to select
     estimator -- estimator used to determine score
 
     """
-    sfm_selection = SelectFromModel(estimator=estimator, max_features=n_features).fit(data, target)
+    sfm_selection = SelectFromModel(estimator=estimator, max_features=n_features, threshold=-np.inf).fit(data, target)
 
     # calculate result vector
     result_vector = convert_vector(sfm_selection.get_support())
