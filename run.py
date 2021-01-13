@@ -12,11 +12,11 @@ from sklearn import svm
 # Settings
 ##################
 # number of processes for parallelization
-n_processes = 4
+n_processes = 2
 # number of splits for cross-validation
-n_splits = 4
+n_splits = 2
 # number of iterations in bayesian optimization
-n_calls = 20
+n_calls = 10
 # openml.org dataset id (30 features: 1510, 10000 features: 1458, 500 features: 1485); # IMPORTANT: classification datasets must have numeric target classes only
 data_ids = {
     "classification": {
@@ -234,7 +234,7 @@ def main():
                                 dataset_id, estimator, metric)
                             # Write grouped results to csv-file
                             bayesian.to_csv("results/bay_opt_" +
-                                            str(dataset_id)+".csv", index=False)
+                                            str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
                             comparison.to_csv(
                                 "results/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
                 elif task == "regression":
@@ -246,7 +246,7 @@ def main():
                             bayesian.to_csv("results/bay_opt_"+str(dataset_id) +
                                             "_"+estimator+"_"+metric+".csv", index=False)
                             comparison.to_csv("results/comparison_" +
-                                            str(dataset_id)+".csv", index=False)
+                                              str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
 
 
 main()
