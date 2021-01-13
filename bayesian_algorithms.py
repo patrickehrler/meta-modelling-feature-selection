@@ -13,7 +13,7 @@ from skopt.utils import cook_estimator
 from utils import get_score
 
 
-def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator=LinearRegression(), acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
+def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
     """ Run Scikit-Optimize Implementation of Bayesian Optimization
 
     Keyword arguments:
@@ -34,7 +34,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         # apply discretization method on value to be evaluated
         mask = __discretize(args[0], discretization_method, n_features)
         # get score from estimator
-        score = 1 - get_score(data, target, mask, estimator)
+        score = 1 - get_score(data, target, mask, estimator, metric)
 
         return score
 

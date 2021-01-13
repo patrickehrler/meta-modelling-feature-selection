@@ -1,21 +1,36 @@
 from itertools import compress
+from sklearn import metrics
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score, explained_variance_score, accuracy_score
+from sklearn import svm
 
-def get_score(data, target, mask, estimator=LinearRegression()):
+
+def get_score(data, target, mask, estimator="linear_regression", metric="r2"):
     """ Returns score for a given feature selection and an estimator.
 
     Keyword arguments:
     data -- feature matrix
     target -- regression or classification targets
     mask -- 0/1 vector of unselected/selected features
-    estimator -- estimator used to determine score
+    estimator -- estimator used to predict target-values
+    metric -- metric used to calculate score
 
     """
     selected_features = list(compress(data.columns, mask))
     filtered_data = data[selected_features]
-    score = estimator.fit(filtered_data, target).score(filtered_data, target)
+    y_pred = get_estimator(estimator).fit(filtered_data, target).predict(filtered_data)
+
+    if metric == "r2":
+        score = r2_score(y_true=target, y_pred=y_pred)
+    elif metric == "explained_variance":
+        score = explained_variance_score(y_true=target, y_pred=y_pred)
+    elif metric == "accuracy":
+        score = accuracy_score(y_true=target, y_pred=y_pred)
+    else:
+        raise ValueError("Invalid metric")
 
     return score
+
 
 def convert_vector(vector):
     """ Convert True/False vector to 0/1 vector
@@ -26,7 +41,8 @@ def convert_vector(vector):
     """
     return [int(x) for x in vector]
 
-def add_testing_score(data, target, dataframe, estimator):
+
+def add_testing_score(data, target, dataframe, estimator, metric):
     """ Calculate score for each row in dataframe and add it as a column
 
     Keyword arguments:
@@ -37,7 +53,16 @@ def add_testing_score(data, target, dataframe, estimator):
     """
     for row in dataframe.index:
         vector = dataframe.loc[row]["Vector"]
-        score = get_score(data, target, vector, estimator)
+        score = get_score(data, target, vector, estimator, metric)
         dataframe.loc[row, "Testing Score"] = score
 
     return dataframe
+
+def get_estimator(estimator):
+    if estimator == "linear_regression":
+        return LinearRegression()
+    elif estimator == "svc_linear":
+        return svm.SVC(kernel="linear")
+    else:
+        raise ValueError("Invalid estimator.")
+

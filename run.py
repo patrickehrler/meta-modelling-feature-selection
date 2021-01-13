@@ -1,4 +1,3 @@
-import numpy as np
 import multiprocessing as mp
 from sklearn.datasets import fetch_openml
 from comparison_algorithms import sfs, rfe, sfm
@@ -7,6 +6,7 @@ from sklearn.model_selection import KFold
 import pandas as pd
 from utils import get_score, add_testing_score
 from sklearn.linear_model import LinearRegression
+from sklearn import svm
 
 ##################
 # Settings
@@ -18,13 +18,30 @@ n_splits = 4
 # number of iterations in bayesian optimization
 n_calls = 20
 # openml.org dataset id (30 features: 1510, 10000 features: 1458, 500 features: 1485); # IMPORTANT: classification datasets must have numeric target classes only
-# TODO: put datasets into dictionary???
-data_id = 1510
-# estimator used for training process
-estimator_training = LinearRegression()
-# estimator used for test process
-estimator_test = LinearRegression()
+data_ids = {
+    "classification": {
+        1510: True,
+        1458: False,
+        1485: False
+    },
+    "regression": {
+        1510: True
+    }
 
+}
+
+
+# Estimator and metric properties
+classification_estimators = {
+    "svc_linear": {
+        "accuracy": "SVC - Accuracy Score"
+    }
+}
+regression_estimators = {
+    "linear_regression": {
+        "r2": "Linear Regression - Coefficient of Determination"
+    }
+}
 
 # Bayesian Optimization Properties
 bay_opt_parameters = ["Approach", "Learning Method",
@@ -62,13 +79,8 @@ comparison_approaches = {
     }
 }
 
-# Import dataset
-X, y = fetch_openml(data_id=data_id, return_X_y=True, as_frame=True)
-print("Dataset downloaded")
-nr_of_features = len(X.columns)
 
-
-def __run_all_bayesian(data, target):
+def __run_all_bayesian(data, target, estimator, metric):
     """ Run all bayesian optimization approaches with all possible parameters.
 
     Keyword arguments:
@@ -76,10 +88,10 @@ def __run_all_bayesian(data, target):
     target -- regression or classification targets
 
     """
+    nr_of_features = len(data.columns)
     # Define result dataframes
     dataframe = pd.DataFrame(
         columns=bay_opt_parameters+["Vector", "Training Score"])
-
     for algo, algo_descr in bayesian_approaches.items():
         for learn, learn_descr in learning_methods.items():
             for discr, discr_descr in discretization_methods.items():
@@ -89,13 +101,13 @@ def __run_all_bayesian(data, target):
                             # TODO: with more than one n_features
                             n_features = round(nr_of_features/2)
                             vector = algo(data=data, target=target, learning_method=learn,
-                                          kernel=kernel, discretization_method=discr, n_features=n_features)
+                                          kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, metric=metric)
                         else:
                             vector = algo(data=data, target=target, learning_method=learn,
-                                          kernel=kernel, discretization_method=discr)
+                                          kernel=kernel, discretization_method=discr, estimator=estimator, metric=metric)
                             n_features = "-"
                         score = get_score(
-                            data, target, vector, estimator_training)
+                            data, target, vector, estimator, metric)
                         dataframe.loc[len(dataframe)] = [
                             algo_descr, learn_descr, kernel_descr, discr_descr, n_features, vector, score]
                 else:
@@ -106,15 +118,16 @@ def __run_all_bayesian(data, target):
                                       discretization_method=discr, n_features=n_features)
                     else:
                         vector = algo(
-                            data=data, target=target, learning_method=learn, discretization_method=discr)
+                            data=data, target=target, learning_method=learn, discretization_method=discr, estimator=estimator, metric=metric)
                         n_features = "-"
-                    score = get_score(data, target, vector, estimator_training)
+                    score = get_score(data, target, vector,
+                                      estimator, metric)
                     dataframe.loc[len(dataframe)] = [
                         algo_descr, learn_descr, "-", discr_descr, n_features, vector, score]
     return dataframe
 
 
-def __run_all_comparison(data, target):
+def __run_all_comparison(data, target, estimator, metric):
     """ Run all comparison approaches with all possible algorithms and parameters.
 
     Keyword arguments:
@@ -122,21 +135,24 @@ def __run_all_comparison(data, target):
     target -- regression or classification targets
 
     """
+    nr_of_features = len(data.columns)
     # Define result dataframe
     dataframe = pd.DataFrame(
         columns=comparison_parameters+["Vector", "Training Score"])
-
     for approach, approach_descr in comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
             for n_features in range(5, nr_of_features+1, 5):
-                vector = algo(data=data, target=target, n_features=n_features)
-                score = get_score(data=data, target=target,
-                                  mask=vector, estimator=estimator_training)
+                # TODO: include metric into comparison approaches (RFE, SFM might not support custom metrics)
+                vector = algo(data=data, target=target,
+                              n_features=n_features, estimator=estimator)
+                score = get_score(data, target, vector,
+                                  estimator, metric)
                 dataframe.loc[len(dataframe)] = [
                     approach, algo_descr, n_features, vector, score]
     return dataframe
 
-def __run_process(train_index, test_index):
+
+def __run_training_testing(data, target, train_index, test_index, estimator, metric):
     """ Run bayesian and comparison approaches on training set, then add score of test set. Return results as dataframe.
 
     Keyword arguments:
@@ -144,67 +160,95 @@ def __run_process(train_index, test_index):
     test_index -- indices of testing set
 
     """
-    X_train, X_test = X.loc[train_index], X.loc[test_index]
-    y_train, y_test = y[train_index], y[test_index]
+    X_train, X_test = data.loc[train_index], data.loc[test_index]
+    y_train, y_test = target[train_index], target[test_index]
     #
     # run all bayesian approaches
     #
-    df_current_bayesian = __run_all_bayesian(X_train, y_train)
+    df_current_bayesian = __run_all_bayesian(
+        X_train, y_train, estimator, metric)
     df_current_bayesian = add_testing_score(
-        X_test, y_test, df_current_bayesian, estimator_test)
+        X_test, y_test, df_current_bayesian, estimator, metric)
     #
     # run all comparison approaches
     #
-    df_current_comparison = __run_all_comparison(X_train, y_train)
+    df_current_comparison = __run_all_comparison(
+        X_train, y_train, estimator, metric)
     df_current_comparison = add_testing_score(
-        X_test, y_test, df_current_comparison, estimator_test)
+        X_test, y_test, df_current_comparison, estimator, metric)
 
     return df_current_bayesian, df_current_comparison
 
 
-# Initialize result dataframe
-df_bay_opt = pd.DataFrame(columns=bay_opt_parameters +
-                          ["Vector", "Training Score", "Testing Score"])
-df_comparison = pd.DataFrame(
-    columns=comparison_parameters+["Vector", "Training Score", "Testing Score"])
+def __run_experiment(openml_data_id, estimator, metric):
+    # Import dataset
+    data, target = fetch_openml(
+        data_id=openml_data_id, return_X_y=True, as_frame=True)
+    print("Dataset downloaded")
+
+    # Initialize result dataframe
+    df_bay_opt = pd.DataFrame(columns=bay_opt_parameters +
+                              ["Vector", "Training Score", "Testing Score"])
+    df_comparison = pd.DataFrame(
+        columns=comparison_parameters+["Vector", "Training Score", "Testing Score"])
+
+    # Split dataset into testing and training data then run all approaches in parallel
+    kf = KFold(n_splits=n_splits, shuffle=True)
+    pool = mp.Pool(processes=n_processes)
+    mp_result = [pool.apply_async(__run_training_testing, args=(data, target,
+                                                                train_index, test_index, estimator, metric)) for train_index, test_index in kf.split(data)]
+    df_result = [p.get() for p in mp_result]
+
+    # Concat bayesian and comparison results to separate dataframes
+    df_bay_opt = pd.concat([x[0] for x in df_result], ignore_index=True)
+    df_comparison = pd.concat([x[1] for x in df_result], ignore_index=True)
+
+    # Write all results to csv-file
+    #df_bay_opt.to_csv("results/bay_opt.csv", index=False)
+    #df_comparison.to_csv("results/comparison.csv", index=False)
+
+    # add column with number of selected features
+    df_bay_opt["actual_features"] = df_bay_opt.apply(
+        lambda row: sum(row["Vector"]), axis=1)
+    df_comparison["actual_features"] = df_comparison.apply(
+        lambda row: sum(row["Vector"]), axis=1)
+
+    # Group results of cross-validation runs and determine min, max and mean of score-vaules and selected features
+    df_bay_opt_grouped = df_bay_opt.groupby(bay_opt_parameters, as_index=False).agg(
+        {"actual_features": ["mean", "min", "max"], "Training Score": ["mean", "min", "max"], "Testing Score": ["mean", "min", "max"]})
+    df_comparison_grouped = df_comparison.groupby(comparison_parameters, as_index=False).agg(
+        {"actual_features": ["mean", "min", "max"], "Training Score": ["mean", "min", "max"], "Testing Score": ["mean", "min", "max"]})
+
+    return df_bay_opt_grouped, df_comparison_grouped
 
 
-# Split dataset into testing and training data then run all approaches in parallel
-kf = KFold(n_splits=n_splits, shuffle=True)
-pool = mp.Pool(processes=n_processes)
-mp_result = [pool.apply_async(__run_process, args=(
-    train_index, test_index)) for train_index, test_index in kf.split(X)]
-df_result = [p.get() for p in mp_result]
+def main():
+    # run all datasets
+    for task, dataset in data_ids.items():
+        for dataset_id, flag in dataset.items():
+            if flag == True:
+                if task == "classification":
+                    for estimator, metrics in classification_estimators.items():
+                        for metric, metric_descr in metrics.items():
+                            bayesian, comparison = __run_experiment(
+                                dataset_id, estimator, metric)
+                            # Write grouped results to csv-file
+                            bayesian.to_csv("results/bay_opt_" +
+                                            str(dataset_id)+".csv", index=False)
+                            comparison.to_csv(
+                                "results/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
+                elif task == "regression":
+                    for estimator, metrics in regression_estimators.items():
+                        for metric, metric_descr in metrics.items():
+                            bayesian, comparison = __run_experiment(
+                                dataset_id, estimator, metric)
+                            # Write grouped results to csv-file
+                            bayesian.to_csv("results/bay_opt_"+str(dataset_id) +
+                                            "_"+estimator+"_"+metric+".csv", index=False)
+                            comparison.to_csv("results/comparison_" +
+                                            str(dataset_id)+".csv", index=False)
 
-# Concat bayesian and comparison results to separate dataframes
-df_bay_opt = pd.concat([x[0] for x in df_result], ignore_index=True)
-df_comparison = pd.concat([x[1] for x in df_result], ignore_index=True)
 
-# Write all results to csv-file
-df_bay_opt.to_csv("results/bay_opt.csv", index=False)
-df_comparison.to_csv("results/comparison.csv", index=False)
-
-# add column with number of selected features
-df_bay_opt["actual_features"] = df_bay_opt.apply(
-    lambda row: sum(row["Vector"]), axis=1)
-df_comparison["actual_features"] = df_comparison.apply(
-    lambda row: sum(row["Vector"]), axis=1)
-
-# Group results of cross-validation runs and determine min, max and mean of score-vaules and selected features
-df_bay_opt_grouped = df_bay_opt.groupby(bay_opt_parameters, as_index=False).agg(
-    {"actual_features": ["mean", "min", "max"], "Training Score": ["mean", "min", "max"], "Testing Score": ["mean", "min", "max"]})
-df_compparison_grouped = df_comparison.groupby(comparison_parameters, as_index=False).agg(
-    {"actual_features": ["mean", "min", "max"], "Training Score": ["mean", "min", "max"], "Testing Score": ["mean", "min", "max"]})
-
-# Write grouped results to csv-file
-df_bay_opt_grouped.to_csv("results/bay_opt_grouped.csv", index=False)
-df_compparison_grouped.to_csv("results/comparison_grouped.csv", index=False)
-
+main()
 
 # TODO Question: Why does RBF kernel work with binary search space?
-
-# def __debug():
-#    score1, vector1 = run_comparison_algorithm(type="SFM", data=X, target=y)
-#    print(score1)
-#    print(vector1)
-# __debug()

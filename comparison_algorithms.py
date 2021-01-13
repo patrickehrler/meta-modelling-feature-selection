@@ -2,10 +2,10 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.feature_selection import RFE, SelectFromModel
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
-from utils import convert_vector
+from utils import convert_vector, get_estimator
 
 
-def sfs(data, target, n_features=None, estimator=LinearRegression()):
+def sfs(data, target, n_features=None, estimator="linear_regression", metric=None):
     """ Run Sequential Feature Selection (a wrapper method)
     https://rasbt.github.io/mlxtend/user_guide/feature_selection/SequentialFeatureSelector/
 
@@ -20,11 +20,12 @@ def sfs(data, target, n_features=None, estimator=LinearRegression()):
         n_features = "best"
 
     # https://rasbt.github.io/mlxtend/user_guide/feature_selection/SequentialFeatureSelector/
-    sfs_selection = SFS(estimator,
+    sfs_selection = SFS(get_estimator(estimator),
                         k_features=n_features,
                         forward=True,
                         verbose=0,
-                        cv=0  # no cross validation # TODO: if cross-validation is on, score is smaller than expected
+                        cv=0,  # disable cross validation
+                        scoring=metric
                         )
     sfs_selection.fit(data, target)
 
@@ -36,7 +37,7 @@ def sfs(data, target, n_features=None, estimator=LinearRegression()):
     return result_vector
 
 
-def rfe(data, target, n_features=10, estimator=LinearRegression()):
+def rfe(data, target, n_features=10, estimator="linear_regression"):
     """ Run Recursive Feature Selection (a wrapper method)
     https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.RFE.html#sklearn.feature_selection.RFE
 
@@ -47,7 +48,8 @@ def rfe(data, target, n_features=10, estimator=LinearRegression()):
     estimator -- estimator used to determine score
 
     """
-    rfe_selection = RFE(estimator=estimator,
+    # TODO: setting metric possible??
+    rfe_selection = RFE(estimator=get_estimator(estimator),
                         n_features_to_select=n_features
                         )
 
@@ -59,7 +61,7 @@ def rfe(data, target, n_features=10, estimator=LinearRegression()):
     return result_vector
 
 
-def sfm(data, target, n_features=None, estimator=LinearRegression()):
+def sfm(data, target, n_features=None, estimator="linear_regression"):
     """ Run Select From Model (an embedded method)
     https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SelectFromModel.html#sklearn.feature_selection.SelectFromModel.get_support
 
@@ -70,7 +72,9 @@ def sfm(data, target, n_features=None, estimator=LinearRegression()):
     estimator -- estimator used to determine score
 
     """
-    sfm_selection = SelectFromModel(estimator=estimator, max_features=n_features, threshold=-np.inf).fit(data, target)
+    # TODO: setting metric possible??
+    sfm_selection = SelectFromModel(estimator=get_estimator(
+        estimator), max_features=n_features, threshold=-np.inf).fit(data, target)
 
     # calculate result vector
     result_vector = convert_vector(sfm_selection.get_support())
