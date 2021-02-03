@@ -13,9 +13,9 @@ from tqdm import tqdm
 # Settings
 ##################
 # number of processes for parallelization
-n_processes = 2
+n_processes = 32
 # number of splits for cross-validation
-n_splits = 2
+n_splits = 5
 # number of iterations in bayesian optimization
 n_calls = 10
 # openml.org dataset id (30 features: 1510, 10000 features: 1458, 500 features: 1485); # IMPORTANT: classification datasets must have numeric target classes only
@@ -26,7 +26,7 @@ data_ids = {
         1485: False
     },
     "regression": {
-        1510: False
+        1510: True
     }
 }
 
@@ -78,6 +78,32 @@ comparison_approaches = {
         sfm: "Select From Model"
     }
 }
+
+def init_progress_bar():
+    # init progress bar (for dataset/estimator combinations)
+    number_datasets_classification = 0
+    number_datasets_regression = 0
+    for type, iter in data_ids.items():
+        if type == "classification":
+            for _, flag in iter.items():
+                if flag == True:
+                    number_datasets_classification += 1
+        else:
+            for _, flag in iter.items():
+                if flag == True:
+                    number_datasets_regression += 1
+    print(number_datasets_regression)
+    print(number_datasets_classification)
+    # add to total steps
+    progress_total = ((number_datasets_classification * len(classification_estimators)
+                      ) + (number_datasets_regression * len(regression_estimators))) * n_splits
+    pbar = tqdm(total=progress_total)
+    pbar.set_description(
+        "Processed")
+    print(progress_total)
+    return pbar
+
+pbar = init_progress_bar()
 
 
 def __run_all_bayesian(data, target, estimator, metric):
@@ -176,6 +202,8 @@ def __run_training_testing(data, target, train_index, test_index, estimator, met
         X_train, y_train, estimator, metric)
     df_current_comparison = add_testing_score(
         X_test, y_test, df_current_comparison, estimator, metric)
+    
+    pbar.update(1) # increase progress bar
 
     return df_current_bayesian, df_current_comparison
 
@@ -219,13 +247,6 @@ def __run_experiment(openml_data_id, estimator, metric):
 
 
 def main():
-    # init progress bar (for dataset/estimator combinations)
-    number_datasets_classification = 1
-    number_datasets_regression = 0
-    progress_total = (number_datasets_classification * len(classification_estimators)) + (number_datasets_regression * len(regression_estimators))
-    pbar_datasets_estimators = tqdm(total=progress_total)
-    pbar_datasets_estimators.set_description("Number of Datasets with estimators processed")
-
     # run all datasets
     for task, dataset in data_ids.items():
         for dataset_id, flag in dataset.items():
@@ -235,7 +256,6 @@ def main():
                         for metric, metric_descr in metrics.items():
                             bayesian, comparison = __run_experiment(
                                 dataset_id, estimator, metric)
-                            pbar_datasets_estimators.update(1)
                             # Write grouped results to csv-file
                             bayesian.to_csv("results/bay_opt_" +
                                             str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
@@ -246,7 +266,6 @@ def main():
                         for metric, metric_descr in metrics.items():
                             bayesian, comparison = __run_experiment(
                                 dataset_id, estimator, metric)
-                            pbar_datasets_estimators.update(1)
                             # Write grouped results to csv-file
                             bayesian.to_csv("results/bay_opt_"+str(dataset_id) +
                                             "_"+estimator+"_"+metric+".csv", index=False)
