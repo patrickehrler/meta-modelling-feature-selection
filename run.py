@@ -92,15 +92,12 @@ def init_progress_bar():
             for _, flag in iter.items():
                 if flag == True:
                     number_datasets_regression += 1
-    print(number_datasets_regression)
-    print(number_datasets_classification)
     # add to total steps
     progress_total = ((number_datasets_classification * len(classification_estimators)
                       ) + (number_datasets_regression * len(regression_estimators))) * n_splits
     pbar = tqdm(total=progress_total)
     pbar.set_description(
         "Processed")
-    print(progress_total)
     return pbar
 
 pbar = init_progress_bar()
