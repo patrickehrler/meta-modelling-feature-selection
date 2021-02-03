@@ -7,6 +7,7 @@ import pandas as pd
 from utils import get_score, add_testing_score
 from sklearn.linear_model import LinearRegression
 from sklearn import svm
+from tqdm import tqdm
 
 ##################
 # Settings
@@ -25,9 +26,8 @@ data_ids = {
         1485: False
     },
     "regression": {
-        1510: True
+        1510: False
     }
-
 }
 
 
@@ -203,10 +203,6 @@ def __run_experiment(openml_data_id, estimator, metric):
     df_bay_opt = pd.concat([x[0] for x in df_result], ignore_index=True)
     df_comparison = pd.concat([x[1] for x in df_result], ignore_index=True)
 
-    # Write all results to csv-file
-    #df_bay_opt.to_csv("results/bay_opt.csv", index=False)
-    #df_comparison.to_csv("results/comparison.csv", index=False)
-
     # add column with number of selected features
     df_bay_opt["actual_features"] = df_bay_opt.apply(
         lambda row: sum(row["Vector"]), axis=1)
@@ -223,6 +219,13 @@ def __run_experiment(openml_data_id, estimator, metric):
 
 
 def main():
+    # init progress bar (for dataset/estimator combinations)
+    number_datasets_classification = 1
+    number_datasets_regression = 0
+    progress_total = (number_datasets_classification * len(classification_estimators)) + (number_datasets_regression * len(regression_estimators))
+    pbar_datasets_estimators = tqdm(total=progress_total)
+    pbar_datasets_estimators.set_description("Number of Datasets with estimators processed")
+
     # run all datasets
     for task, dataset in data_ids.items():
         for dataset_id, flag in dataset.items():
@@ -232,6 +235,7 @@ def main():
                         for metric, metric_descr in metrics.items():
                             bayesian, comparison = __run_experiment(
                                 dataset_id, estimator, metric)
+                            pbar_datasets_estimators.update(1)
                             # Write grouped results to csv-file
                             bayesian.to_csv("results/bay_opt_" +
                                             str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
@@ -242,6 +246,7 @@ def main():
                         for metric, metric_descr in metrics.items():
                             bayesian, comparison = __run_experiment(
                                 dataset_id, estimator, metric)
+                            pbar_datasets_estimators.update(1)
                             # Write grouped results to csv-file
                             bayesian.to_csv("results/bay_opt_"+str(dataset_id) +
                                             "_"+estimator+"_"+metric+".csv", index=False)
