@@ -48,7 +48,6 @@ def rfe(data, target, n_features=10, estimator="linear_regression"):
     estimator -- estimator used to determine score
 
     """
-    # TODO: setting metric possible??
     rfe_selection = RFE(estimator=get_estimator(estimator),
                         n_features_to_select=n_features
                         )
@@ -72,7 +71,6 @@ def sfm(data, target, n_features=None, estimator="linear_regression"):
     estimator -- estimator used to determine score
 
     """
-    # TODO: setting metric possible??
     sfm_selection = SelectFromModel(estimator=get_estimator(
         estimator), max_features=n_features, threshold=-np.inf).fit(data, target)
 

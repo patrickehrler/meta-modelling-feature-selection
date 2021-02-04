@@ -61,8 +61,10 @@ def add_testing_score(data, target, dataframe, estimator, metric):
 def get_estimator(estimator):
     if estimator == "linear_regression":
         return LinearRegression()
+    elif estimator == "svr_linear":
+        return svm.LinearSVR(dual=False, loss="squared_epsilon_insensitive") # dual false, because n_samples > n_features
     elif estimator == "svc_linear":
-        return svm.SVC(kernel="linear")
+        return svm.LinearSVC(dual=False) 
     else:
         raise ValueError("Invalid estimator.")
 

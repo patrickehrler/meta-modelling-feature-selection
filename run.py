@@ -5,43 +5,46 @@ from bayesian_algorithms import skopt
 from sklearn.model_selection import KFold
 import pandas as pd
 from utils import get_score, add_testing_score
-from sklearn.linear_model import LinearRegression
-from sklearn import svm
 from tqdm import tqdm
 
 ##################
 # Settings
 ##################
 # number of processes for parallelization
-n_processes = 4
+n_processes = 32
 # number of splits for cross-validation
-n_splits = 2
+n_splits = 5
 # number of iterations in bayesian optimization
-n_calls = 10
+n_calls = 50
 # openml.org dataset id (30 features: 1510, 10000 features: 1458, 500 features: 1485); # IMPORTANT: classification datasets must have numeric target classes only
 data_ids = {
     "classification": {
-        1510: False,
-        1485: False,
-        1458: False
+        1510: False, # 30 features
+        1485: False, # 500 features
+        1458: False, # 10000 features
+        1079: False # 22278 features
     },
     "regression": {
-        1510: False,
-        1485: True,
-        1458: False
+        1510: False, # 30 features
+        1485: True, # 500 features
+        1458: False, # 10000 features
+        1079: False # 22278 features
     }
 }
 
 
-# Estimator and metric properties
+# Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
 classification_estimators = {
-    # very bad performance on many features!
+    # very bad performance for many features!
     "svc_linear": {
         "accuracy": "SVC - Accuracy Score"
     }
 }
 regression_estimators = {
     "linear_regression": {
+        "r2": "Linear Regression - Coefficient of Determination"
+    },
+    "svr_linear": {
         "r2": "Linear Regression - Coefficient of Determination"
     }
 }
@@ -186,7 +189,6 @@ def __run_all_comparison(data, target, estimator, metric, queue):
         for algo, algo_descr in approach_descr.items():
             # TODO: choose only specific n_features
             for n_features in range(5, nr_of_features+1, 100):
-                # TODO: include metric into comparison approaches (RFE, SFM might not support custom metrics)
                 vector = algo(data=data, target=target,
                               n_features=n_features, estimator=estimator)
                 score = get_score(data, target, vector,
@@ -248,7 +250,7 @@ def __run_experiment(openml_data_id, estimator, metric):
     df_comparison = pd.DataFrame(
         columns=comparison_parameters+["Vector", "Training Score", "Testing Score"])
 
-    # Iinitialize queue to syncronize progress bar
+    # Initialize queue to syncronize progress bar
     queue = mp.Manager().Queue()
     proc = mp.Process(target=progressbar_listener, args=(queue,))
     proc.start()
