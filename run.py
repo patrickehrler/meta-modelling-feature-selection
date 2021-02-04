@@ -25,8 +25,8 @@ data_ids = {
         1079: False # 22278 features
     },
     "regression": {
-        1510: False, # 30 features
-        1485: True, # 500 features
+        1510: True, # 30 features
+        1485: False, # 500 features
         1458: False, # 10000 features
         1079: False # 22278 features
     }
@@ -239,7 +239,7 @@ def progressbar_listener(q):
         pbar.update(amount)
 
 
-def __run_experiment(openml_data_id, estimator, metric):
+def __run_experiment(openml_data_id, estimator, metric, queue):
     # Import dataset
     data, target = fetch_openml(
         data_id=openml_data_id, return_X_y=True, as_frame=True)
@@ -250,19 +250,12 @@ def __run_experiment(openml_data_id, estimator, metric):
     df_comparison = pd.DataFrame(
         columns=comparison_parameters+["Vector", "Training Score", "Testing Score"])
 
-    # Initialize queue to syncronize progress bar
-    queue = mp.Manager().Queue()
-    proc = mp.Process(target=progressbar_listener, args=(queue,))
-    proc.start()
-
     # Split dataset into testing and training data then run all approaches in parallel
     kf = KFold(n_splits=n_splits, shuffle=True)
     pool = mp.Pool(processes=n_processes)
     mp_result = [pool.apply_async(__run_training_testing, args=(data, target,
                                                                 train_index, test_index, estimator, metric, queue)) for train_index, test_index in kf.split(data)]
     df_result = [p.get() for p in mp_result]
-    queue.put(None)
-    proc.join()
 
     # Concat bayesian and comparison results to separate dataframes
     df_bay_opt = pd.concat([x[0] for x in df_result], ignore_index=True)
@@ -284,6 +277,11 @@ def __run_experiment(openml_data_id, estimator, metric):
 
 
 def main():
+    # Initialize queue to syncronize progress bar
+    queue = mp.Manager().Queue()
+    proc = mp.Process(target=progressbar_listener, args=(queue,))
+    proc.start()
+
     # run all datasets
     for task, dataset in data_ids.items():
         for dataset_id, flag in dataset.items():
@@ -292,7 +290,7 @@ def main():
                     for estimator, metrics in classification_estimators.items():
                         for metric, _ in metrics.items():
                             bayesian, comparison = __run_experiment(
-                                dataset_id, estimator, metric)
+                                dataset_id, estimator, metric, queue)
                             # Write grouped results to csv-file
                             bayesian.to_csv("results/bay_opt_" +
                                             str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
@@ -302,12 +300,14 @@ def main():
                     for estimator, metrics in regression_estimators.items():
                         for metric, _ in metrics.items():
                             bayesian, comparison = __run_experiment(
-                                dataset_id, estimator, metric)
+                                dataset_id, estimator, metric, queue)
                             # Write grouped results to csv-file
                             bayesian.to_csv("results/bay_opt_"+str(dataset_id) +
                                             "_"+estimator+"_"+metric+".csv", index=False)
                             comparison.to_csv("results/comparison_" +
                                               str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
+    queue.put(None)
+    proc.join()
 
 
 main()
