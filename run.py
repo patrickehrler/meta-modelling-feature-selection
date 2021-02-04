@@ -13,26 +13,29 @@ from tqdm import tqdm
 # Settings
 ##################
 # number of processes for parallelization
-n_processes = 32
+n_processes = 4
 # number of splits for cross-validation
-n_splits = 5
+n_splits = 2
 # number of iterations in bayesian optimization
 n_calls = 10
 # openml.org dataset id (30 features: 1510, 10000 features: 1458, 500 features: 1485); # IMPORTANT: classification datasets must have numeric target classes only
 data_ids = {
     "classification": {
-        1510: True,
-        1458: False,
-        1485: False
+        1510: False,
+        1485: False,
+        1458: False
     },
     "regression": {
-        1510: True
+        1510: False,
+        1485: True,
+        1458: False
     }
 }
 
 
 # Estimator and metric properties
 classification_estimators = {
+    # very bad performance on many features!
     "svc_linear": {
         "accuracy": "SVC - Accuracy Score"
     }
@@ -79,8 +82,12 @@ comparison_approaches = {
     }
 }
 
+
 def init_progress_bar():
-    # init progress bar (for dataset/estimator combinations)
+    """ Initialize progress bar (one step for each execution of a comparison or bayesian approach).
+
+    """
+    # calculate number of active dataset-estimator combinations
     number_datasets_classification = 0
     number_datasets_regression = 0
     for type, iter in data_ids.items():
@@ -92,18 +99,29 @@ def init_progress_bar():
             for _, flag in iter.items():
                 if flag == True:
                     number_datasets_regression += 1
-    # add to total steps
-    progress_total = ((number_datasets_classification * len(classification_estimators)
-                      ) + (number_datasets_regression * len(regression_estimators))) * n_splits
+    number_datasets_and_estimators = ((number_datasets_classification * len(classification_estimators)
+                                       ) + (number_datasets_regression * len(regression_estimators))) * n_splits
+
+    # calculate number of bayesian approaches
+    number_of_bayesian = (len(bayesian_approaches) * len(discretization_methods)) * (
+        (len(learning_methods)-1) + len(kernels))  # only gaussian processes use kernels
+
+    # calculate number of comparison approaches
+    number_of_comparison = 0
+    for _, approach in comparison_approaches.items():
+        for _, _ in approach.items():
+            number_of_comparison += 1
+
+    # calculate total progress bar steps
+    progress_total = number_datasets_and_estimators * \
+        (number_of_bayesian + number_of_comparison)
     pbar = tqdm(total=progress_total)
-    pbar.set_description(
-        "Processed")
+    pbar.set_description("Processed")
+
     return pbar
 
-pbar = init_progress_bar()
 
-
-def __run_all_bayesian(data, target, estimator, metric):
+def __run_all_bayesian(data, target, estimator, metric, queue):
     """ Run all bayesian optimization approaches with all possible parameters.
 
     Keyword arguments:
@@ -133,6 +151,7 @@ def __run_all_bayesian(data, target, estimator, metric):
                             data, target, vector, estimator, metric)
                         dataframe.loc[len(dataframe)] = [
                             algo_descr, learn_descr, kernel_descr, discr_descr, n_features, vector, score]
+                        queue.put(1)  # increase progress bar
                 else:
                     if discr == "n_highest":
                         # TODO: with more than one n_features
@@ -147,10 +166,11 @@ def __run_all_bayesian(data, target, estimator, metric):
                                       estimator, metric)
                     dataframe.loc[len(dataframe)] = [
                         algo_descr, learn_descr, "-", discr_descr, n_features, vector, score]
+                    queue.put(1)  # increase progress bar
     return dataframe
 
 
-def __run_all_comparison(data, target, estimator, metric):
+def __run_all_comparison(data, target, estimator, metric, queue):
     """ Run all comparison approaches with all possible algorithms and parameters.
 
     Keyword arguments:
@@ -164,7 +184,8 @@ def __run_all_comparison(data, target, estimator, metric):
         columns=comparison_parameters+["Vector", "Training Score"])
     for approach, approach_descr in comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
-            for n_features in range(5, nr_of_features+1, 5):
+            # TODO: choose only specific n_features
+            for n_features in range(5, nr_of_features+1, 100):
                 # TODO: include metric into comparison approaches (RFE, SFM might not support custom metrics)
                 vector = algo(data=data, target=target,
                               n_features=n_features, estimator=estimator)
@@ -172,10 +193,11 @@ def __run_all_comparison(data, target, estimator, metric):
                                   estimator, metric)
                 dataframe.loc[len(dataframe)] = [
                     approach, algo_descr, n_features, vector, score]
+                queue.put(1)  # increase progress bar
     return dataframe
 
 
-def __run_training_testing(data, target, train_index, test_index, estimator, metric):
+def __run_training_testing(data, target, train_index, test_index, estimator, metric, queue):
     """ Run bayesian and comparison approaches on training set, then add score of test set. Return results as dataframe.
 
     Keyword arguments:
@@ -189,27 +211,36 @@ def __run_training_testing(data, target, train_index, test_index, estimator, met
     # run all bayesian approaches
     #
     df_current_bayesian = __run_all_bayesian(
-        X_train, y_train, estimator, metric)
+        X_train, y_train, estimator, metric, queue)
     df_current_bayesian = add_testing_score(
         X_test, y_test, df_current_bayesian, estimator, metric)
     #
     # run all comparison approaches
     #
     df_current_comparison = __run_all_comparison(
-        X_train, y_train, estimator, metric)
+        X_train, y_train, estimator, metric, queue)
     df_current_comparison = add_testing_score(
         X_test, y_test, df_current_comparison, estimator, metric)
-    
-    pbar.update(1) # increase progress bar
 
     return df_current_bayesian, df_current_comparison
+
+
+def progressbar_listener(q):
+    """ Queue listener to increase progressbar from threads
+
+    Keyword arguments:
+    q -- queue
+
+    """
+    pbar = init_progress_bar()
+    for amount in iter(q.get, None):
+        pbar.update(amount)
 
 
 def __run_experiment(openml_data_id, estimator, metric):
     # Import dataset
     data, target = fetch_openml(
         data_id=openml_data_id, return_X_y=True, as_frame=True)
-    print("Dataset downloaded")
 
     # Initialize result dataframe
     df_bay_opt = pd.DataFrame(columns=bay_opt_parameters +
@@ -217,12 +248,19 @@ def __run_experiment(openml_data_id, estimator, metric):
     df_comparison = pd.DataFrame(
         columns=comparison_parameters+["Vector", "Training Score", "Testing Score"])
 
+    # Iinitialize queue to syncronize progress bar
+    queue = mp.Manager().Queue()
+    proc = mp.Process(target=progressbar_listener, args=(queue,))
+    proc.start()
+
     # Split dataset into testing and training data then run all approaches in parallel
     kf = KFold(n_splits=n_splits, shuffle=True)
     pool = mp.Pool(processes=n_processes)
     mp_result = [pool.apply_async(__run_training_testing, args=(data, target,
-                                                                train_index, test_index, estimator, metric)) for train_index, test_index in kf.split(data)]
+                                                                train_index, test_index, estimator, metric, queue)) for train_index, test_index in kf.split(data)]
     df_result = [p.get() for p in mp_result]
+    queue.put(None)
+    proc.join()
 
     # Concat bayesian and comparison results to separate dataframes
     df_bay_opt = pd.concat([x[0] for x in df_result], ignore_index=True)
@@ -250,7 +288,7 @@ def main():
             if flag == True:
                 if task == "classification":
                     for estimator, metrics in classification_estimators.items():
-                        for metric, metric_descr in metrics.items():
+                        for metric, _ in metrics.items():
                             bayesian, comparison = __run_experiment(
                                 dataset_id, estimator, metric)
                             # Write grouped results to csv-file
@@ -260,7 +298,7 @@ def main():
                                 "results/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
                 elif task == "regression":
                     for estimator, metrics in regression_estimators.items():
-                        for metric, metric_descr in metrics.items():
+                        for metric, _ in metrics.items():
                             bayesian, comparison = __run_experiment(
                                 dataset_id, estimator, metric)
                             # Write grouped results to csv-file
