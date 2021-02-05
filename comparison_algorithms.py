@@ -16,6 +16,7 @@ def sfs(data, target, n_features=None, estimator="linear_regression", metric=Non
     estimator -- estimator used to determine score
 
     """
+    print("start sfs: " + str(n_features) + " " + str(estimator) + " " + str(metric))
     if n_features is None:
         n_features = "best"
 
@@ -34,6 +35,8 @@ def sfs(data, target, n_features=None, estimator="linear_regression", metric=Non
     for index in sfs_selection.k_feature_idx_:
         result_vector[index] = 1
 
+    print("stop sfs: " + str(n_features) + " " + str(estimator) + " " + str(metric))    
+
     return result_vector
 
 
@@ -48,6 +51,7 @@ def rfe(data, target, n_features=10, estimator="linear_regression"):
     estimator -- estimator used to determine score
 
     """
+    print("start rfe: " + str(n_features) + " " + str(estimator))
     rfe_selection = RFE(estimator=get_estimator(estimator),
                         n_features_to_select=n_features
                         )
@@ -56,6 +60,7 @@ def rfe(data, target, n_features=10, estimator="linear_regression"):
 
     # calculate result vector
     result_vector = convert_vector(rfe_selection.support_)
+    print("stop rfe: " + str(n_features) + " " + str(estimator))
 
     return result_vector
 
@@ -71,11 +76,13 @@ def sfm(data, target, n_features=None, estimator="linear_regression"):
     estimator -- estimator used to determine score
 
     """
+    print("start sfm: " + str(n_features) + " " + str(estimator))
     sfm_selection = SelectFromModel(estimator=get_estimator(
         estimator), max_features=n_features, threshold=-np.inf).fit(data, target)
 
     # calculate result vector
     result_vector = convert_vector(sfm_selection.get_support())
+    print("stop sfm: " + str(n_features) + " " + str(estimator))
 
     return result_vector
 

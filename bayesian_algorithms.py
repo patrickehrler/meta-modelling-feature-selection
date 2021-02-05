@@ -7,7 +7,6 @@ from skopt.learning.gaussian_process.kernels import (RBF, Matern, RationalQuadra
 from skopt.learning.gbrt import GradientBoostingQuantileRegressor
 from skopt.space import Integer, Real
 from skopt.optimizer import base_minimize
-from sklearn.linear_model import LinearRegression
 import numpy as np
 from skopt.utils import cook_estimator
 from utils import get_score
@@ -29,6 +28,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     noise -- 
 
     """
+    print("start bayesian: " + str(n_features) + " " + str(kernel) + " " + str(learning_method) + " " + str(discretization_method) + " " + str(estimator) + " " + str(metric) + " " + str(acq_func))
     # define black box function
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
@@ -98,6 +98,8 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
 
     result_vector = __discretize(
         optimizer.x, discretization_method, n_features)
+
+    print("stop bayesian: " + str(n_features) + " " + str(kernel) + " " + str(learning_method) + " " + str(discretization_method) + " " + str(estimator) + " " + str(metric) + " " + str(acq_func))
 
     return result_vector
 

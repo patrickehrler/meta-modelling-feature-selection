@@ -114,6 +114,7 @@ def init_progress_bar():
     for _, approach in comparison_approaches.items():
         for _, _ in approach.items():
             number_of_comparison += 1
+    print(number_of_comparison)
 
     # calculate total progress bar steps
     progress_total = number_datasets_and_estimators * \
