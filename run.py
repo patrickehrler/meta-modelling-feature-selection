@@ -77,7 +77,7 @@ discretization_methods = {
 comparison_parameters = ["Approach", "Algorithm", "n_features"]
 comparison_approaches = {
     "wrapper": {
-        sfs: "Sequential Feature Selection",
+        #sfs: "Sequential Feature Selection"
         rfe: "Recursive Feature Selection"
     },
     "embedded": {
