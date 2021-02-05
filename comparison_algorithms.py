@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from sklearn.feature_selection import RFE, SelectFromModel
+from sklearn.feature_selection import RFE, SelectFromModel, VarianceThreshold, SelectKBest
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from utils import convert_vector, get_estimator
 
@@ -76,6 +76,39 @@ def sfm(data, target, n_features=None, estimator="linear_regression"):
 
     # calculate result vector
     result_vector = convert_vector(sfm_selection.get_support())
+
+    return result_vector
+
+
+def vt(data, target):
+    """ Run Variance Threshold feature selection. Threshhold is 0, which means only features with zero-variance are removed.
+
+    Keyword arguments:
+    data -- feature matrix
+    target -- ignored (only for compatibility)
+    """
+    # TODO: try different tresholds
+    vt_selection = VarianceThreshold(threshold=0)
+    vt_selection.fit(data)
+
+    result_vector = convert_vector(vt_selection.get_support())
+
+    return result_vector
+
+
+def skb(data, target, n_features, estimator):
+    """ Run SelectKBest feature selection.
+
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to select
+    estimator -- ignored (only for compatibility)
+    """
+    # TODO: try different score_func (chi2)
+    skb_selection = SelectKBest(k=n_features).fit(data, target)
+
+    result_vector = convert_vector(skb_selection.get_support())
 
     return result_vector
 

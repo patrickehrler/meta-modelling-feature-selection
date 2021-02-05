@@ -2,6 +2,7 @@ from itertools import compress
 from sklearn import metrics
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, explained_variance_score, accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn import svm
 
 
@@ -65,6 +66,8 @@ def get_estimator(estimator):
         return svm.LinearSVR(dual=False, loss="squared_epsilon_insensitive") # dual false, because n_samples > n_features
     elif estimator == "svc_linear":
         return svm.LinearSVC(dual=False) 
+    elif estimator == "k_neighbours_classifier":
+        return KNeighborsClassifier(n_neighbors=5)
     else:
         raise ValueError("Invalid estimator.")
 

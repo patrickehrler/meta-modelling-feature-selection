@@ -1,6 +1,6 @@
 import multiprocessing as mp
 from sklearn.datasets import fetch_openml
-from comparison_algorithms import sfs, rfe, sfm
+from comparison_algorithms import rfe, sfs, sfm, vt, skb
 from bayesian_algorithms import skopt
 from sklearn.model_selection import KFold
 import pandas as pd
@@ -35,17 +35,21 @@ data_ids = {
 
 # Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
 classification_estimators = {
-    # very bad performance for many features!
     "svc_linear": {
-        "accuracy": "SVC - Accuracy Score"
+        "accuracy": "Support Vector Classification - Accuracy Score"
+    },
+    "k_neighbours_classifier": {
+        "accuracy": "k Neighbours Classification - Accuracy Score"
     }
 }
 regression_estimators = {
     "linear_regression": {
-        "r2": "Linear Regression - Coefficient of Determination"
+        "r2": "Linear Regression - Coefficient of Determination",
+        "explained_variance": "Linear Regression - Explained variance regression score function"
     },
     "svr_linear": {
-        "r2": "Linear Regression - Coefficient of Determination"
+        "r2": "Support Vector Regression - Coefficient of Determination",
+        "explained_variance": "Support Vector Regression - Explained variance regression score function"
     }
 }
 
@@ -76,8 +80,12 @@ discretization_methods = {
 # Comparison Approaches Properties
 comparison_parameters = ["Approach", "Algorithm", "n_features"]
 comparison_approaches = {
+    "filter": {
+        vt: "Variance Threshold",
+        skb: "SelectKBest"
+    },
     "wrapper": {
-        #sfs: "Sequential Feature Selection"
+        #sfs: "Sequential Feature Selection" # bad performance when many features
         rfe: "Recursive Feature Selection"
     },
     "embedded": {
@@ -90,7 +98,7 @@ def init_progress_bar():
     """ Initialize progress bar (one step for each execution of a comparison or bayesian approach).
 
     """
-    # calculate number of active dataset-estimator combinations
+    # calculate number of datasets
     number_datasets_classification = 0
     number_datasets_regression = 0
     for type, iter in data_ids.items():
@@ -102,8 +110,20 @@ def init_progress_bar():
             for _, flag in iter.items():
                 if flag == True:
                     number_datasets_regression += 1
-    number_datasets_and_estimators = ((number_datasets_classification * len(classification_estimators)
-                                       ) + (number_datasets_regression * len(regression_estimators))) * n_splits
+
+    # calculate number of estimators/metrics
+    number_regression_estimators = 0
+    for _, iter in regression_estimators.items():
+        for _, _ in iter.items():
+            number_regression_estimators += 1
+    number_classification_estimators = 0
+    for _, iter in classification_estimators.items():
+        for _, _ in iter.items():
+            number_classification_estimators += 1
+
+    # calculate numbe rof dataset/estimator combinations
+    number_datasets_and_estimators = ((number_datasets_classification * number_classification_estimators
+                                       ) + (number_datasets_regression * number_regression_estimators)) * n_splits
 
     # calculate number of bayesian approaches
     number_of_bayesian = (len(bayesian_approaches) * len(discretization_methods)) * (
@@ -187,14 +207,21 @@ def __run_all_comparison(data, target, estimator, metric, queue):
         columns=comparison_parameters+["Vector", "Training Score"])
     for approach, approach_descr in comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
-            # TODO: choose only specific n_features
-            for n_features in range(5, nr_of_features+1, 100):
-                vector = algo(data=data, target=target,
-                              n_features=n_features, estimator=estimator)
+            if algo == vt:
+                vector = algo(data=data, target=target)
                 score = get_score(data, target, vector,
-                                  estimator, metric)
+                                    estimator, metric)
                 dataframe.loc[len(dataframe)] = [
-                    approach, algo_descr, n_features, vector, score]
+                        approach, algo_descr, "-", vector, score]
+            else:
+                # TODO: choose only specific n_features
+                for n_features in range(5, nr_of_features+1, 100):
+                    vector = algo(data=data, target=target,
+                                n_features=n_features, estimator=estimator)
+                    score = get_score(data, target, vector,
+                                    estimator, metric)
+                    dataframe.loc[len(dataframe)] = [
+                        approach, algo_descr, n_features, vector, score]
             queue.put(1)  # increase progress bar
     return dataframe
 
@@ -292,19 +319,19 @@ def main():
                             bayesian, comparison = __run_experiment(
                                 dataset_id, estimator, metric, queue)
                             # Write grouped results to csv-file
-                            bayesian.to_csv("results/bay_opt_" +
+                            bayesian.to_csv("results/classification/bay_opt_" +
                                             str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
                             comparison.to_csv(
-                                "results/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
+                                "results/classification/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
                 elif task == "regression":
                     for estimator, metrics in regression_estimators.items():
                         for metric, _ in metrics.items():
                             bayesian, comparison = __run_experiment(
                                 dataset_id, estimator, metric, queue)
                             # Write grouped results to csv-file
-                            bayesian.to_csv("results/bay_opt_"+str(dataset_id) +
+                            bayesian.to_csv("results/regression/bay_opt_"+str(dataset_id) +
                                             "_"+estimator+"_"+metric+".csv", index=False)
-                            comparison.to_csv("results/comparison_" +
+                            comparison.to_csv("results/regression/comparison_" +
                                               str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
     queue.put(None)
     proc.join()
