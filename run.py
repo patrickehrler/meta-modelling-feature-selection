@@ -195,7 +195,7 @@ def __run_all_comparison(data, target, estimator, metric, queue):
                                   estimator, metric)
                 dataframe.loc[len(dataframe)] = [
                     approach, algo_descr, n_features, vector, score]
-                queue.put(1)  # increase progress bar
+            queue.put(1)  # increase progress bar
     return dataframe
 
 
