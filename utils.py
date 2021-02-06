@@ -1,9 +1,8 @@
 from itertools import compress
-from sklearn import metrics
+from sklearn import svm
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, explained_variance_score, accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn import svm
 
 
 def get_score(data, target, mask, estimator="linear_regression", metric="r2"):
@@ -21,10 +20,12 @@ def get_score(data, target, mask, estimator="linear_regression", metric="r2"):
     filtered_data = data[selected_features]
     y_pred = get_estimator(estimator).fit(filtered_data, target).predict(filtered_data)
 
+    # regression metrics
     if metric == "r2":
         score = r2_score(y_true=target, y_pred=y_pred)
     elif metric == "explained_variance":
         score = explained_variance_score(y_true=target, y_pred=y_pred)
+    # classification metrics
     elif metric == "accuracy":
         score = accuracy_score(y_true=target, y_pred=y_pred)
     else:
@@ -50,6 +51,8 @@ def add_testing_score(data, target, dataframe, estimator, metric):
     data -- feature matrix
     target -- regression or classification targets
     dataframe -- pandas dataframe with column 'Vector'
+    estimator -- estimator used to predict target-values
+    metric -- metric used to calculate score 
 
     """
     for row in dataframe.index:
@@ -59,13 +62,20 @@ def add_testing_score(data, target, dataframe, estimator, metric):
 
     return dataframe
 
+
 def get_estimator(estimator):
+    """ Returns estimator object.
+
+    Keyword arguments:
+    estimator -- estimator -- estimator name
+
+    """
     if estimator == "linear_regression":
         return LinearRegression()
     elif estimator == "svr_linear":
-        return svm.LinearSVR(dual=False, loss="squared_epsilon_insensitive") # dual false, because n_samples > n_features
+        return svm.LinearSVR(dual=False, loss="squared_epsilon_insensitive", max_iter=10000) # dual false, because n_samples > n_features
     elif estimator == "svc_linear":
-        return svm.LinearSVC(dual=False) 
+        return svm.LinearSVC(dual=False, max_iter=10000) 
     elif estimator == "k_neighbours_classifier":
         return KNeighborsClassifier(n_neighbors=5)
     else:

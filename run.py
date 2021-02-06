@@ -1,46 +1,22 @@
-import multiprocessing as mp
-from sklearn.datasets import fetch_openml
-from comparison_algorithms import rfe, sfs, sfm, vt, skb
 from bayesian_algorithms import skopt
+from comparison_algorithms import rfe, sfs, sfm, vt, skb
+from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
-import pandas as pd
-from utils import get_score, add_testing_score
 from tqdm import tqdm
-
-##################
-# Settings
-##################
-# number of processes for parallelization
-n_processes = 32
-# number of splits for cross-validation
-n_splits = 5
-# number of iterations in bayesian optimization
-n_calls = 50
-# openml.org dataset id (30 features: 1510, 10000 features: 1458, 500 features: 1485); # IMPORTANT: classification datasets must have numeric target classes only
-data_ids = {
-    "classification": {
-        1510: False, # 30 features
-        1485: False, # 500 features
-        1458: False, # 10000 features
-        1079: False # 22278 features
-    },
-    "regression": {
-        1510: True, # 30 features
-        1485: False, # 500 features
-        1458: False, # 10000 features
-        1079: False # 22278 features
-    }
-}
+from utils import get_score, add_testing_score
+import config
+import multiprocessing as mp
+import pandas as pd
 
 
 # Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
 classification_estimators = {
     "svc_linear": {
         "accuracy": "Support Vector Classification - Accuracy Score"
-    },
-    "k_neighbours_classifier": {
-        "accuracy": "k Neighbours Classification - Accuracy Score"
     }
+    #"k_neighbours_classifier": { # results in error message
+    #    "accuracy": "k Neighbours Classification - Accuracy Score"
+    #}
 }
 regression_estimators = {
     "linear_regression": {
@@ -101,7 +77,7 @@ def init_progress_bar():
     # calculate number of datasets
     number_datasets_classification = 0
     number_datasets_regression = 0
-    for type, iter in data_ids.items():
+    for type, iter in config.data_ids.items():
         if type == "classification":
             for _, flag in iter.items():
                 if flag == True:
@@ -123,7 +99,7 @@ def init_progress_bar():
 
     # calculate numbe rof dataset/estimator combinations
     number_datasets_and_estimators = ((number_datasets_classification * number_classification_estimators
-                                       ) + (number_datasets_regression * number_regression_estimators)) * n_splits
+                                       ) + (number_datasets_regression * number_regression_estimators)) * config.n_splits
 
     # calculate number of bayesian approaches
     number_of_bayesian = (len(bayesian_approaches) * len(discretization_methods)) * (
@@ -278,8 +254,8 @@ def __run_experiment(openml_data_id, estimator, metric, queue):
         columns=comparison_parameters+["Vector", "Training Score", "Testing Score"])
 
     # Split dataset into testing and training data then run all approaches in parallel
-    kf = KFold(n_splits=n_splits, shuffle=True)
-    pool = mp.Pool(processes=n_processes)
+    kf = KFold(n_splits=config.n_splits, shuffle=True)
+    pool = mp.Pool(processes=config.n_processes)
     mp_result = [pool.apply_async(__run_training_testing, args=(data, target,
                                                                 train_index, test_index, estimator, metric, queue)) for train_index, test_index in kf.split(data)]
     df_result = [p.get() for p in mp_result]
@@ -310,7 +286,7 @@ def main():
     proc.start()
 
     # run all datasets
-    for task, dataset in data_ids.items():
+    for task, dataset in config.data_ids.items():
         for dataset_id, flag in dataset.items():
             if flag == True:
                 if task == "classification":

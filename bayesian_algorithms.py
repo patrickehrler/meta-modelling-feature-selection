@@ -5,12 +5,11 @@ from skopt.learning.gaussian_process.kernels import (RBF, Matern, RationalQuadra
                                                      ExpSineSquared, DotProduct,
                                                      ConstantKernel, HammingKernel)
 from skopt.learning.gbrt import GradientBoostingQuantileRegressor
-from skopt.space import Integer, Real
 from skopt.optimizer import base_minimize
-from sklearn.linear_model import LinearRegression
-import numpy as np
+from skopt.space import Integer, Real
 from skopt.utils import cook_estimator
 from utils import get_score
+import numpy as np
 
 
 def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
@@ -62,7 +61,6 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
             else:
                 raise ValueError("Invalid kernel.")
         else:
-            # TODO: Can random forests, ... also use different kernels?
             raise ValueError("Kernels can only be used with Gaussian Processes.")
     else:
         if learning_method == "RF":

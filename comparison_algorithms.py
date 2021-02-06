@@ -1,8 +1,7 @@
-import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.feature_selection import RFE, SelectFromModel, VarianceThreshold, SelectKBest
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+from sklearn.feature_selection import RFE, SelectFromModel, VarianceThreshold, SelectKBest
 from utils import convert_vector, get_estimator
+import numpy as np
 
 
 def sfs(data, target, n_features=None, estimator="linear_regression", metric=None):
@@ -14,6 +13,7 @@ def sfs(data, target, n_features=None, estimator="linear_regression", metric=Non
     target -- regression or classification targets
     n_features -- number of features to be selected; if 'None' then best cross-validation result is selected
     estimator -- estimator used to determine score
+    metric -- metric used to calculate score
 
     """
     if n_features is None:
@@ -86,6 +86,7 @@ def vt(data, target):
     Keyword arguments:
     data -- feature matrix
     target -- ignored (only for compatibility)
+
     """
     # TODO: try different tresholds
     vt_selection = VarianceThreshold(threshold=0)
@@ -104,6 +105,7 @@ def skb(data, target, n_features, estimator):
     target -- regression or classification targets
     n_features -- number of features to select
     estimator -- ignored (only for compatibility)
+
     """
     # TODO: try different score_func (chi2)
     skb_selection = SelectKBest(k=n_features).fit(data, target)
@@ -111,6 +113,3 @@ def skb(data, target, n_features, estimator):
     result_vector = convert_vector(skb_selection.get_support())
 
     return result_vector
-
-
-# TODO implement more algorithms
