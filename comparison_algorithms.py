@@ -80,7 +80,7 @@ def sfm(data, target, n_features=None, estimator="linear_regression"):
     return result_vector
 
 
-def vt(data, target):
+def vt(data, target=None):
     """ Run Variance Threshold feature selection. Threshhold is 0, which means only features with zero-variance are removed.
 
     Keyword arguments:
@@ -97,7 +97,7 @@ def vt(data, target):
     return result_vector
 
 
-def skb(data, target, n_features, estimator):
+def skb(data, target, n_features, estimator=None):
     """ Run SelectKBest feature selection.
 
     Keyword arguments:

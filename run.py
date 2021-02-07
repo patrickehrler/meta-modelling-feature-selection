@@ -14,9 +14,9 @@ classification_estimators = {
     "svc_linear": {
         "accuracy": "Support Vector Classification - Accuracy Score"
     }
-    #"k_neighbours_classifier": { # results in error message
+    # "k_neighbours_classifier": { # results in error message
     #    "accuracy": "k Neighbours Classification - Accuracy Score"
-    #}
+    # }
 }
 regression_estimators = {
     "linear_regression": {
@@ -61,7 +61,7 @@ comparison_approaches = {
         skb: "SelectKBest"
     },
     "wrapper": {
-        #sfs: "Sequential Feature Selection" # bad performance when many features
+        # sfs: "Sequential Feature Selection" # bad performance when many features
         rfe: "Recursive Feature Selection"
     },
     "embedded": {
@@ -120,17 +120,22 @@ def init_progress_bar():
     return pbar
 
 
-def __run_all_bayesian(data, target, estimator, metric, queue):
+def __run_all_bayesian(data_training, data_test, target_training, target_test, estimator, metric, n_calls, queue):
     """ Run all bayesian optimization approaches with all possible parameters.
 
     Keyword arguments:
-    data -- feature matrix
-    target -- regression or classification targets
+    data_training -- feature matrix of training data
+    data_test -- feature matrix of test data
+    target_training -- target vector of training data
+    target_test -- target vector of test data
+    estimator -- estimator used to predict target-values
+    metric -- metric used to calculate score
+    queue -- queue to synchronize progress bar
 
     """
-    nr_of_features = len(data.columns)
+    nr_of_features = len(data_training.columns)
     # Define result dataframes
-    dataframe = pd.DataFrame(
+    df_results = pd.DataFrame(
         columns=bay_opt_parameters+["Vector", "Training Score"])
     for algo, algo_descr in bayesian_approaches.items():
         for learn, learn_descr in learning_methods.items():
@@ -140,97 +145,83 @@ def __run_all_bayesian(data, target, estimator, metric, queue):
                         if discr == "n_highest":
                             # TODO: with more than one n_features
                             n_features = round(nr_of_features/2)
-                            vector = algo(data=data, target=target, learning_method=learn,
-                                          kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, metric=metric)
+                            vector = algo(data=data_training, target=target_training, learning_method=learn,
+                                          kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, metric=metric, n_calls=n_calls)
                         else:
-                            vector = algo(data=data, target=target, learning_method=learn,
-                                          kernel=kernel, discretization_method=discr, estimator=estimator, metric=metric)
+                            vector = algo(data=data_training, target=target_training, learning_method=learn,
+                                          kernel=kernel, discretization_method=discr, estimator=estimator, metric=metric, n_calls=n_calls)
                             n_features = "-"
                         score = get_score(
-                            data, target, vector, estimator, metric)
-                        dataframe.loc[len(dataframe)] = [
+                            data_training, target_training, vector, estimator, metric)
+                        df_results.loc[len(df_results)] = [
                             algo_descr, learn_descr, kernel_descr, discr_descr, n_features, vector, score]
                         queue.put(1)  # increase progress bar
                 else:
                     if discr == "n_highest":
                         # TODO: with more than one n_features
                         n_features = round(nr_of_features/2)
-                        vector = algo(data=data, target=target, learning_method=learn,
-                                      discretization_method=discr, n_features=n_features)
+                        vector = algo(data=data_training, target=target_training, learning_method=learn,
+                                      discretization_method=discr, n_features=n_features, n_calls=n_calls)
                     else:
                         vector = algo(
-                            data=data, target=target, learning_method=learn, discretization_method=discr, estimator=estimator, metric=metric)
+                            data=data_training, target=target_training, learning_method=learn, discretization_method=discr, estimator=estimator, metric=metric, n_calls=n_calls)
                         n_features = "-"
-                    score = get_score(data, target, vector,
+                    score = get_score(data_training, target_training, vector,
                                       estimator, metric)
-                    dataframe.loc[len(dataframe)] = [
+                    df_results.loc[len(df_results)] = [
                         algo_descr, learn_descr, "-", discr_descr, n_features, vector, score]
                     queue.put(1)  # increase progress bar
-    return dataframe
+    # generate test scores
+    df_results_with_test_scores = add_testing_score(
+        data_test, target_test, df_results, estimator, metric)
+
+    return df_results_with_test_scores
 
 
-def __run_all_comparison(data, target, estimator, metric, queue):
+def __run_all_comparison(data_training, data_test, target_training, target_test, estimator, metric, queue):
     """ Run all comparison approaches with all possible algorithms and parameters.
 
     Keyword arguments:
-    data -- feature matrix
-    target -- regression or classification targets
+    data_training -- feature matrix of training data
+    data_test -- feature matrix of test data
+    target_training -- target vector of training data
+    target_test -- target vector of test data
+    estimator -- estimator used to predict target-values
+    metric -- metric used to calculate score
+    queue -- queue to synchronize progress bar
 
     """
-    nr_of_features = len(data.columns)
+    nr_of_features = len(data_training.columns)
     # Define result dataframe
-    dataframe = pd.DataFrame(
+    df_results = pd.DataFrame(
         columns=comparison_parameters+["Vector", "Training Score"])
     for approach, approach_descr in comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
             if algo == vt:
-                vector = algo(data=data, target=target)
-                score = get_score(data, target, vector,
-                                    estimator, metric)
-                dataframe.loc[len(dataframe)] = [
-                        approach, algo_descr, "-", vector, score]
+                vector = algo(data=data_training, target=target_training)
+                score = get_score(data_training, target_training, vector,
+                                  estimator, metric)
+                df_results.loc[len(df_results)] = [
+                    approach, algo_descr, "-", vector, score]
             else:
                 # TODO: choose only specific n_features
                 for n_features in range(5, nr_of_features+1, 100):
-                    vector = algo(data=data, target=target,
-                                n_features=n_features, estimator=estimator)
-                    score = get_score(data, target, vector,
-                                    estimator, metric)
-                    dataframe.loc[len(dataframe)] = [
+                    vector = algo(data=data_training, target=target_training,
+                                  n_features=n_features, estimator=estimator)
+                    score = get_score(data_training, target_training, vector,
+                                      estimator, metric)
+                    df_results.loc[len(df_results)] = [
                         approach, algo_descr, n_features, vector, score]
             queue.put(1)  # increase progress bar
-    return dataframe
+
+    # generate test scores
+    df_results_with_test_scores = add_testing_score(
+        data_test, target_test, df_results, estimator, metric)
+
+    return df_results_with_test_scores
 
 
-def __run_training_testing(data, target, train_index, test_index, estimator, metric, queue):
-    """ Run bayesian and comparison approaches on training set, then add score of test set. Return results as dataframe.
-
-    Keyword arguments:
-    train_index -- indices of training set
-    test_index -- indices of testing set
-
-    """
-    X_train, X_test = data.loc[train_index], data.loc[test_index]
-    y_train, y_test = target[train_index], target[test_index]
-    #
-    # run all bayesian approaches
-    #
-    df_current_bayesian = __run_all_bayesian(
-        X_train, y_train, estimator, metric, queue)
-    df_current_bayesian = add_testing_score(
-        X_test, y_test, df_current_bayesian, estimator, metric)
-    #
-    # run all comparison approaches
-    #
-    df_current_comparison = __run_all_comparison(
-        X_train, y_train, estimator, metric, queue)
-    df_current_comparison = add_testing_score(
-        X_test, y_test, df_current_comparison, estimator, metric)
-
-    return df_current_bayesian, df_current_comparison
-
-
-def progressbar_listener(q):
+def __progressbar_listener(q):
     """ Queue listener to increase progressbar from threads
 
     Keyword arguments:
@@ -242,7 +233,17 @@ def progressbar_listener(q):
         pbar.update(amount)
 
 
-def __run_experiment(openml_data_id, estimator, metric, queue):
+def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, queue):
+    """ Run both bayesian and comparison approaches with all possible parameter combinations (only dataset, estimator and metric are fixed)
+
+    Keyword arguments:
+    openml_data_id -- dataset id from openml.org
+    estimator -- estimator used to predict target-values
+    metric -- metric used to calculate score
+    n_calls -- number of iterations in bayesian optimization
+    queue -- queue to synchronize progress bar
+
+    """
     # Import dataset
     data, target = fetch_openml(
         data_id=openml_data_id, return_X_y=True, as_frame=True)
@@ -254,15 +255,19 @@ def __run_experiment(openml_data_id, estimator, metric, queue):
         columns=comparison_parameters+["Vector", "Training Score", "Testing Score"])
 
     # Split dataset into testing and training data then run all approaches in parallel
-    kf = KFold(n_splits=config.n_splits, shuffle=True)
+    kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
     pool = mp.Pool(processes=config.n_processes)
-    mp_result = [pool.apply_async(__run_training_testing, args=(data, target,
-                                                                train_index, test_index, estimator, metric, queue)) for train_index, test_index in kf.split(data)]
-    df_result = [p.get() for p in mp_result]
 
-    # Concat bayesian and comparison results to separate dataframes
-    df_bay_opt = pd.concat([x[0] for x in df_result], ignore_index=True)
-    df_comparison = pd.concat([x[1] for x in df_result], ignore_index=True)
+    result_comparison = [pool.apply_async(__run_all_comparison, args=(data.loc[train_index], data.loc[test_index],
+                                                                      target[train_index], target[test_index], estimator, metric, queue)) for train_index, test_index in kf]
+    result_bayesian = [pool.apply_async(__run_all_bayesian, args=(data.loc[train_index], data.loc[test_index],
+                                                                  target[train_index], target[test_index], estimator, metric, n_calls, queue)) for train_index, test_index in kf]
+    df_comparison = [r.get() for r in result_comparison]
+    df_bayesian = [r.get() for r in result_bayesian]
+
+    # Concat bayesian and comparison result-arrays to combined dataframes
+    df_comparison = pd.concat(df_comparison, ignore_index=True)
+    df_bayesian = pd.concat(df_bayesian, ignore_index=True)
 
     # add column with number of selected features
     df_bay_opt["actual_features"] = df_bay_opt.apply(
@@ -272,17 +277,20 @@ def __run_experiment(openml_data_id, estimator, metric, queue):
 
     # Group results of cross-validation runs and determine min, max and mean of score-vaules and selected features
     df_bay_opt_grouped = df_bay_opt.groupby(bay_opt_parameters, as_index=False).agg(
-        {"actual_features": ["mean", "min", "max"], "Training Score": ["mean", "min", "max"], "Testing Score": ["mean", "min", "max"]})
+        {"actual_features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
     df_comparison_grouped = df_comparison.groupby(comparison_parameters, as_index=False).agg(
-        {"actual_features": ["mean", "min", "max"], "Training Score": ["mean", "min", "max"], "Testing Score": ["mean", "min", "max"]})
+        {"actual_features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
 
     return df_bay_opt_grouped, df_comparison_grouped
 
 
-def main():
+def experiment_all_datasets_and_estimators():
+    """ Runs an experiment involving all bayesian/comparison approaches with all possible parameters, datasets, estimators and metrics.
+
+    """
     # Initialize queue to syncronize progress bar
     queue = mp.Manager().Queue()
-    proc = mp.Process(target=progressbar_listener, args=(queue,))
+    proc = mp.Process(target=__progressbar_listener, args=(queue,))
     proc.start()
 
     # run all datasets
@@ -292,8 +300,8 @@ def main():
                 if task == "classification":
                     for estimator, metrics in classification_estimators.items():
                         for metric, _ in metrics.items():
-                            bayesian, comparison = __run_experiment(
-                                dataset_id, estimator, metric, queue)
+                            bayesian, comparison = __run_all_bayesian_comparison(
+                                dataset_id, estimator, metric, config.n_calls, queue)
                             # Write grouped results to csv-file
                             bayesian.to_csv("results/classification/bay_opt_" +
                                             str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
@@ -302,8 +310,8 @@ def main():
                 elif task == "regression":
                     for estimator, metrics in regression_estimators.items():
                         for metric, _ in metrics.items():
-                            bayesian, comparison = __run_experiment(
-                                dataset_id, estimator, metric, queue)
+                            bayesian, comparison = __run_all_bayesian_comparison(
+                                dataset_id, estimator, metric, config.n_calls, queue)
                             # Write grouped results to csv-file
                             bayesian.to_csv("results/regression/bay_opt_"+str(dataset_id) +
                                             "_"+estimator+"_"+metric+".csv", index=False)
@@ -313,6 +321,59 @@ def main():
     proc.join()
 
 
-main()
 
+
+def experiment_bayesian_iter_performance():
+    """ Runs bayesian optimization to compare the performance depending on the iteration steps.
+
+    """
+    # Settings
+    dataset_id = 1485
+    learning_method = "GP"
+    discretization_method = "round"
+    estimator = "linear_regression"
+    metric = "r2"
+    kernel = "MATERN"
+
+    # Import dataset
+    data, target = fetch_openml(data_id=dataset_id, return_X_y=True, as_frame=True)
+
+    # use kfold cross validation
+    kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
+
+    # create multiprocess pool and apply task in parallel
+    pool = mp.Pool(processes=config.n_processes)
+    mp_results = []
+    
+    for train_index, test_index in kf:
+        for n_calls in range(5, 106, 10):
+            mp_results.append((n_calls, train_index, test_index, pool.apply_async(skopt, args=(data.loc[train_index], target.loc[train_index], None, kernel, learning_method, discretization_method, estimator, metric, "PI", n_calls))))
+    
+    results = [(r[0], r[1], r[2], r[3].get()) for r in tqdm(mp_results)]
+    pool.close()
+    pool.join()
+
+    # store in pandas dataframe
+    df_result = pd.DataFrame(([n_calls, get_score(data.loc[train_index], target.loc[train_index], vector, estimator, metric), get_score(data.loc[test_index], target.loc[test_index], vector, estimator, metric)] for n_calls, train_index, test_index, vector in results), columns=["Iteration Steps", "Training Score", "Testing Score"])
+    df_result_grouped = df_result.groupby(["Iteration Steps"], as_index=False).agg(
+        {"Training Score": ["mean"], "Testing Score": ["mean"]})
+
+    #print(df_result)
+    print(df_result_grouped)
+    df_result_grouped.to_csv("results/bay_opt_iterations_" +
+                                              str(dataset_id)+"_"+estimator+"_"+metric+ "_" + learning_method + "_" + kernel + "_" + discretization_method + ".csv", index=False)
+
+experiment_bayesian_iter_performance()
+# run_all_datasets_and_estimators()
+
+"""def debug():
+    data, target = fetch_openml(
+        data_id=1485, return_X_y=True, as_frame=True)
+    vector = skopt(data, target, n_calls=100)
+    print(vector)
+    print(sum(vector))
+    print(get_score(data, target, vector))"""
+
+
+#debug()
 # TODO Question: Why does RBF kernel work with binary search space?

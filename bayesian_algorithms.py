@@ -18,6 +18,8 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     Keyword arguments:
     data -- feature matrix
     target -- regression or classification targets
+    data_test -- feature matrix for test data (can be None, then no score is returned)
+    target_test -- target vector (can be None, then no score is returned)
     n_features -- number of features to be selected; if 'None' then best result is selected
     estimator -- estimator used to determine score
     discretization_method -- define method on how to work with search space
