@@ -31,7 +31,7 @@ regression_estimators = {
 
 # Bayesian Optimization Properties
 bay_opt_parameters = ["Approach", "Learning Method",
-                      "Kernel", "Discretization Method", "n_features"]
+                      "Kernel", "Discretization Method", "Acquisition Function", "n_features"]
 bayesian_approaches = {
     skopt: "Scikit Optimize"
 }
@@ -51,6 +51,11 @@ discretization_methods = {
     "round": "round",
     "n_highest": "n highest",
     "binary": "binary"
+}
+acquisition_functions = {
+    "LCB": "lower confidence bound",
+    "EI": "expected improvement",
+    "PI": "probability of improvement"
 }
 
 # Comparison Approaches Properties
@@ -102,7 +107,7 @@ def init_progress_bar():
                                        ) + (number_datasets_regression * number_regression_estimators)) * config.n_splits
 
     # calculate number of bayesian approaches
-    number_of_bayesian = (len(bayesian_approaches) * len(discretization_methods)) * (
+    number_of_bayesian = (len(bayesian_approaches) * len(discretization_methods) * len(acquisition_functions)) * (
         (len(learning_methods)-1) + len(kernels))  # only gaussian processes use kernels
 
     # calculate number of comparison approaches
@@ -140,41 +145,41 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
     for algo, algo_descr in bayesian_approaches.items():
         for learn, learn_descr in learning_methods.items():
             for discr, discr_descr in discretization_methods.items():
-                if learn == "GP":
-                    for kernel, kernel_descr in kernels.items():
+                for acq, _ in acquisition_functions.items():
+                    if learn == "GP":
+                        for kernel, kernel_descr in kernels.items():
+                            if discr == "n_highest":
+                                # TODO: with more than one n_features
+                                n_features = round(nr_of_features/2)
+                                vector = algo(data=data_training, target=target_training, learning_method=learn,
+                                              kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
+                            else:
+                                vector = algo(data=data_training, target=target_training, learning_method=learn,
+                                              kernel=kernel, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
+                                n_features = "-"
+                            score = get_score(
+                                data_training, target_training, vector, estimator, metric)
+                            df_results.loc[len(df_results)] = [
+                                algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                            queue.put(1)  # increase progress bar
+                    else:
                         if discr == "n_highest":
                             # TODO: with more than one n_features
                             n_features = round(nr_of_features/2)
                             vector = algo(data=data_training, target=target_training, learning_method=learn,
-                                          kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, metric=metric, n_calls=n_calls)
+                                          discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls)
                         else:
-                            vector = algo(data=data_training, target=target_training, learning_method=learn,
-                                          kernel=kernel, discretization_method=discr, estimator=estimator, metric=metric, n_calls=n_calls)
+                            vector = algo(
+                                data=data_training, target=target_training, learning_method=learn, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
                             n_features = "-"
-                        score = get_score(
-                            data_training, target_training, vector, estimator, metric)
+                        score = get_score(data_training, target_training, vector,
+                                          estimator, metric)
                         df_results.loc[len(df_results)] = [
-                            algo_descr, learn_descr, kernel_descr, discr_descr, n_features, vector, score]
+                            algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
                         queue.put(1)  # increase progress bar
-                else:
-                    if discr == "n_highest":
-                        # TODO: with more than one n_features
-                        n_features = round(nr_of_features/2)
-                        vector = algo(data=data_training, target=target_training, learning_method=learn,
-                                      discretization_method=discr, n_features=n_features, n_calls=n_calls)
-                    else:
-                        vector = algo(
-                            data=data_training, target=target_training, learning_method=learn, discretization_method=discr, estimator=estimator, metric=metric, n_calls=n_calls)
-                        n_features = "-"
-                    score = get_score(data_training, target_training, vector,
-                                      estimator, metric)
-                    df_results.loc[len(df_results)] = [
-                        algo_descr, learn_descr, "-", discr_descr, n_features, vector, score]
-                    queue.put(1)  # increase progress bar
     # generate test scores
     df_results_with_test_scores = add_testing_score(
         data_test, target_test, df_results, estimator, metric)
-
     return df_results_with_test_scores
 
 
@@ -257,17 +262,25 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
     # Split dataset into testing and training data then run all approaches in parallel
     kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
     pool = mp.Pool(processes=config.n_processes)
+    mp_results = []
+    for train_index, test_index in kf:
+        mp_results.append(("comparison", pool.apply_async(__run_all_comparison, args=(data.loc[train_index], data.loc[test_index],
+                                                                                      target[train_index], target[test_index], estimator, metric, queue))))
+        mp_results.append(("bayesian", pool.apply_async(__run_all_bayesian, args=(data.loc[train_index], data.loc[test_index],
+                                                                                  target[train_index], target[test_index], estimator, metric, n_calls, queue))))
 
-    result_comparison = [pool.apply_async(__run_all_comparison, args=(data.loc[train_index], data.loc[test_index],
-                                                                      target[train_index], target[test_index], estimator, metric, queue)) for train_index, test_index in kf]
-    result_bayesian = [pool.apply_async(__run_all_bayesian, args=(data.loc[train_index], data.loc[test_index],
-                                                                  target[train_index], target[test_index], estimator, metric, n_calls, queue)) for train_index, test_index in kf]
-    df_comparison = [r.get() for r in result_comparison]
-    df_bayesian = [r.get() for r in result_bayesian]
+    # receive results from multiprocessing
+    results_comparison = []
+    results_bay_opt = []
+    for approach, r in mp_results:
+        if approach == "comparison":
+            results_comparison.append(r.get())
+        else:
+            results_bay_opt.append(r.get())
 
     # Concat bayesian and comparison result-arrays to combined dataframes
-    df_comparison = pd.concat(df_comparison, ignore_index=True)
-    df_bayesian = pd.concat(df_bayesian, ignore_index=True)
+    df_comparison = pd.concat(results_comparison, ignore_index=True)
+    df_bay_opt = pd.concat(results_bay_opt, ignore_index=True)
 
     # add column with number of selected features
     df_bay_opt["actual_features"] = df_bay_opt.apply(
@@ -298,75 +311,90 @@ def experiment_all_datasets_and_estimators():
         for dataset_id, flag in dataset.items():
             if flag == True:
                 if task == "classification":
-                    for estimator, metrics in classification_estimators.items():
-                        for metric, _ in metrics.items():
-                            bayesian, comparison = __run_all_bayesian_comparison(
-                                dataset_id, estimator, metric, config.n_calls, queue)
-                            # Write grouped results to csv-file
-                            bayesian.to_csv("results/classification/bay_opt_" +
-                                            str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
-                            comparison.to_csv(
-                                "results/classification/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
-                elif task == "regression":
-                    for estimator, metrics in regression_estimators.items():
-                        for metric, _ in metrics.items():
-                            bayesian, comparison = __run_all_bayesian_comparison(
-                                dataset_id, estimator, metric, config.n_calls, queue)
-                            # Write grouped results to csv-file
-                            bayesian.to_csv("results/regression/bay_opt_"+str(dataset_id) +
-                                            "_"+estimator+"_"+metric+".csv", index=False)
-                            comparison.to_csv("results/regression/comparison_" +
-                                              str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
+                    estimators = classification_estimators
+                else:
+                    estimators = regression_estimators
+                for estimator, metrics in estimators.items():
+                    for metric, _ in metrics.items():
+                        bayesian, comparison = __run_all_bayesian_comparison(
+                            dataset_id, estimator, metric, config.n_calls, queue)
+                        # Write grouped results to csv-file
+                        bayesian.to_csv("results/" + task + "/bay_opt_" +
+                                        str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
+                        comparison.to_csv(
+                            "results/comparison_bayesian_experiment/" + task + "/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
+
     queue.put(None)
     proc.join()
 
 
-
-
 def experiment_bayesian_iter_performance():
-    """ Runs bayesian optimization to compare the performance depending on the iteration steps.
+    """ Runs bayesian optimization to compare the performance depending on the iteration steps for all datasets/estimators/metrics.
 
     """
     # Settings
-    dataset_id = 1485
-    learning_method = "GP"
-    discretization_method = "round"
-    estimator = "linear_regression"
-    metric = "r2"
+    #dataset_id = 1485
+    max_calls = 200
+    min_calls = 5
+    iter_step = 10
+    #learning_method = "GP"
+    #discretization_method = "round"
     kernel = "MATERN"
 
-    # Import dataset
-    data, target = fetch_openml(data_id=dataset_id, return_X_y=True, as_frame=True)
+    # Import datasets
+    datasets = {}
+    for task, dataset in config.data_ids.items():
+        for dataset_id, flag in dataset.items():
+            if flag == True:
+                datasets[dataset_id] = fetch_openml(
+                    data_id=dataset_id, return_X_y=True, as_frame=True)
 
-    # use kfold cross validation
-    kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
-
-    # create multiprocess pool and apply task in parallel
+    # create multiprocess pool
     pool = mp.Pool(processes=config.n_processes)
     mp_results = []
-    
-    for train_index, test_index in kf:
-        for n_calls in range(5, 106, 10):
-            mp_results.append((n_calls, train_index, test_index, pool.apply_async(skopt, args=(data.loc[train_index], target.loc[train_index], None, kernel, learning_method, discretization_method, estimator, metric, "PI", n_calls))))
-    
-    results = [(r[0], r[1], r[2], r[3].get()) for r in tqdm(mp_results)]
-    pool.close()
-    pool.join()
+
+    for dataset_id, (data, target) in datasets.items():
+        # use kfold cross validation
+        kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
+
+        if task == "classification":
+            estimators = classification_estimators
+        else:
+            estimators = regression_estimators
+
+        # add tasks to multiprocessing pipeline
+        for estimator, metrics in estimators.items():
+            for metric, _ in metrics.items():
+                for learning_method, _ in learning_methods.items():
+                    for discretization_method, _ in discretization_methods.items():
+                        for acq, _ in acquisition_functions.items():
+                            for train_index, test_index in kf:
+                                for n_calls in range(min_calls, max_calls, iter_step):
+                                    if learning_method == "GP":
+                                        for kernel, _ in kernels.items():
+                                            mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, train_index, test_index, pool.apply_async(
+                                                skopt, args=(data.loc[train_index], target.loc[train_index], None, kernel, learning_method, discretization_method, estimator, metric, acq, n_calls))))
+                                    else:
+                                        mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_calls, train_index, test_index, pool.apply_async(
+                                            skopt, args=(data.loc[train_index], target.loc[train_index], None, None, learning_method, discretization_method, estimator, metric, acq, n_calls))))
+
+    # get finished tasks (display tqdm progressbar)
+    results = [tuple(r[0:10]) + tuple(r[10].get()) for r in tqdm(mp_results)]
 
     # store in pandas dataframe
-    df_result = pd.DataFrame(([n_calls, get_score(data.loc[train_index], target.loc[train_index], vector, estimator, metric), get_score(data.loc[test_index], target.loc[test_index], vector, estimator, metric)] for n_calls, train_index, test_index, vector in results), columns=["Iteration Steps", "Training Score", "Testing Score"])
-    df_result_grouped = df_result.groupby(["Iteration Steps"], as_index=False).agg(
+    df_result = pd.DataFrame(([dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, get_score(data.loc[train_index], target.loc[train_index], vector, estimator, metric), get_score(data.loc[test_index], target.loc[test_index], vector, estimator, metric)] for dataset_id,
+                              estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, train_index, test_index, vector in results), columns=["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Iteration Steps", "Training Score", "Testing Score"])
+    df_result_grouped = df_result.groupby(["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Iteration Steps"], as_index=False).agg(
         {"Training Score": ["mean"], "Testing Score": ["mean"]})
+    df_result_grouped.to_csv(
+        "results/iteration_number_experiment/bay_opt_iterations.csv", index=False)
 
-    #print(df_result)
-    print(df_result_grouped)
-    df_result_grouped.to_csv("results/bay_opt_iterations_" +
-                                              str(dataset_id)+"_"+estimator+"_"+metric+ "_" + learning_method + "_" + kernel + "_" + discretization_method + ".csv", index=False)
 
 experiment_bayesian_iter_performance()
-# run_all_datasets_and_estimators()
+# experiment_all_datasets_and_estimators()
 
-"""def debug():
+"""
+def debug():
     data, target = fetch_openml(
         data_id=1485, return_X_y=True, as_frame=True)
     vector = skopt(data, target, n_calls=100)
@@ -375,5 +403,5 @@ experiment_bayesian_iter_performance()
     print(get_score(data, target, vector))"""
 
 
-#debug()
+# debug()
 # TODO Question: Why does RBF kernel work with binary search space?
