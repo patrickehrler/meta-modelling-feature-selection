@@ -56,14 +56,16 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
             if kernel == "MATERN":
                 base_estimator = GaussianProcessRegressor(1.0 * Matern())
             elif kernel == "HAMMING":
-                base_estimator = GaussianProcessRegressor(1.0 * HammingKernel())
+                base_estimator = GaussianProcessRegressor(
+                    1.0 * HammingKernel())
             elif kernel == "RBF":
                 # https://blogs.sas.com/content/iml/2018/09/26/radial-basis-functions-gaussian-kernels.html (basically squared distance)
                 base_estimator = GaussianProcessRegressor(1.0 * RBF())
             else:
                 raise ValueError("Invalid kernel.")
         else:
-            raise ValueError("Kernels can only be used with Gaussian Processes.")
+            raise ValueError(
+                "Kernels can only be used with Gaussian Processes.")
     else:
         if learning_method == "RF":
             base_estimator = RandomForestRegressor()
@@ -95,9 +97,12 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         random_state=random_state,  # the random seed
         verbose=False
     )
-
-    result_vector = __discretize(
-        optimizer.x, discretization_method, n_features)
+    if discretization_method == "round" and n_features is not None:
+        # to limit the number of selected features on "round" we use the n highest features after the last bayesian iteration step
+        result_vector = __discretize(optimizer.x, "n_highest", n_features)
+    else:
+        result_vector = __discretize(
+            optimizer.x, discretization_method, n_features)
 
     return result_vector
 

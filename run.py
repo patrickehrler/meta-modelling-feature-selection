@@ -148,7 +148,7 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                     if learn == "GP":
                         for kernel, kernel_descr in kernels.items():
                             vector = []
-                            if discr == "n_highest":
+                            if discr == "n_highest" or discr == "round":
                                 for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                                     vector = algo(data=data_training, target=target_training, learning_method=learn,
                                               kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
@@ -156,18 +156,25 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                                         data_training, target_training, vector, estimator, metric)
                                     df_results.loc[len(df_results)] = [
                                         algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                    if discr == "round":
+                                        # run "round" without a predifined number of features
+                                        vector = algo(data=data_training, target=target_training, learning_method=learn,
+                                              kernel=kernel, discretization_method=discr, n_features=None, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
+                                        score = get_score(
+                                            data_training, target_training, vector, estimator, metric)
+                                        df_results.loc[len(df_results)] = [
+                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, "-", vector, score]
                             else:
                                 vector = algo(data=data_training, target=target_training, learning_method=learn,
                                               kernel=kernel, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
-                                n_features = "-"
                                 score = get_score(
                                     data_training, target_training, vector, estimator, metric)
                                 df_results.loc[len(df_results)] = [
-                                    algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                    algo_descr, learn_descr, kernel_descr, discr_descr, acq, "-", vector, score]
                             queue.put(1)  # increase progress bar
                     else:
                         vector = []
-                        if discr == "n_highest":
+                        if discr == "n_highest" or "round":
                             for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                                 vector = algo(data=data_training, target=target_training, learning_method=learn,
                                               discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls)
@@ -175,14 +182,21 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                                           estimator, metric)
                                 df_results.loc[len(df_results)] = [
                                         algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
+                                if discr == "round":
+                                    # run "round" without a predifined number of features
+                                    vector = algo(data=data_training, target=target_training, learning_method=learn,
+                                              discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=None, n_calls=n_calls)
+                                    score = get_score(data_training, target_training, vector,
+                                          estimator, metric)
+                                    df_results.loc[len(df_results)] = [
+                                        algo_descr, learn_descr, "-", discr_descr, acq, "-", vector, score]
                         else:
                             vector = algo(
                                 data=data_training, target=target_training, learning_method=learn, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
-                            n_features = "-"
                             score = get_score(data_training, target_training, vector,
                                           estimator, metric)
                             df_results.loc[len(df_results)] = [
-                                    algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
+                                    algo_descr, learn_descr, "-", discr_descr, acq, "-", vector, score]
                         
                         queue.put(1)  # increase progress bar
     # generate test scores
