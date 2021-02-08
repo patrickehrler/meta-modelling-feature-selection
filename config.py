@@ -20,8 +20,9 @@ iter_step_nr_features = 5
 # IMPORTANT: datasets must have numeric target classes only
 data_ids = {
     "classification": {
-        1510: True, # 30 features
+        1510: False, # 30 features
         1485: False, # 500 features
+        1039: True,
         1458: False, # 10000 features
         1079: False # 22278 features
     },
