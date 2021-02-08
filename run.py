@@ -138,7 +138,6 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
     queue -- queue to synchronize progress bar
 
     """
-    nr_of_features = len(data_training.columns)
     # Define result dataframes
     df_results = pd.DataFrame(
         columns=bay_opt_parameters+["Vector", "Training Score"])
@@ -148,34 +147,43 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                 for acq, _ in acquisition_functions.items():
                     if learn == "GP":
                         for kernel, kernel_descr in kernels.items():
+                            vector = []
                             if discr == "n_highest":
-                                # TODO: with more than one n_features
-                                n_features = round(nr_of_features/2)
-                                vector = algo(data=data_training, target=target_training, learning_method=learn,
+                                for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
+                                    vector = algo(data=data_training, target=target_training, learning_method=learn,
                                               kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
+                                    score = get_score(
+                                        data_training, target_training, vector, estimator, metric)
+                                    df_results.loc[len(df_results)] = [
+                                        algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
                             else:
                                 vector = algo(data=data_training, target=target_training, learning_method=learn,
                                               kernel=kernel, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
                                 n_features = "-"
-                            score = get_score(
-                                data_training, target_training, vector, estimator, metric)
-                            df_results.loc[len(df_results)] = [
-                                algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                score = get_score(
+                                    data_training, target_training, vector, estimator, metric)
+                                df_results.loc[len(df_results)] = [
+                                    algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
                             queue.put(1)  # increase progress bar
                     else:
+                        vector = []
                         if discr == "n_highest":
-                            # TODO: with more than one n_features
-                            n_features = round(nr_of_features/2)
-                            vector = algo(data=data_training, target=target_training, learning_method=learn,
-                                          discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls)
+                            for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
+                                vector = algo(data=data_training, target=target_training, learning_method=learn,
+                                              discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls)
+                                score = get_score(data_training, target_training, vector,
+                                          estimator, metric)
+                                df_results.loc[len(df_results)] = [
+                                        algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
                         else:
                             vector = algo(
                                 data=data_training, target=target_training, learning_method=learn, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
                             n_features = "-"
-                        score = get_score(data_training, target_training, vector,
+                            score = get_score(data_training, target_training, vector,
                                           estimator, metric)
-                        df_results.loc[len(df_results)] = [
-                            algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
+                            df_results.loc[len(df_results)] = [
+                                    algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
+                        
                         queue.put(1)  # increase progress bar
     # generate test scores
     df_results_with_test_scores = add_testing_score(
@@ -196,7 +204,6 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
     queue -- queue to synchronize progress bar
 
     """
-    nr_of_features = len(data_training.columns)
     # Define result dataframe
     df_results = pd.DataFrame(
         columns=comparison_parameters+["Vector", "Training Score"])
@@ -209,8 +216,7 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
                 df_results.loc[len(df_results)] = [
                     approach, algo_descr, "-", vector, score]
             else:
-                # TODO: choose only specific n_features
-                for n_features in range(5, nr_of_features+1, 100):
+                for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                     vector = algo(data=data_training, target=target_training,
                                   n_features=n_features, estimator=estimator)
                     score = get_score(data_training, target_training, vector,
@@ -319,7 +325,7 @@ def experiment_all_datasets_and_estimators():
                         bayesian, comparison = __run_all_bayesian_comparison(
                             dataset_id, estimator, metric, config.n_calls, queue)
                         # Write grouped results to csv-file
-                        bayesian.to_csv("results/" + task + "/bay_opt_" +
+                        bayesian.to_csv("results/comparison_bayesian_experiment/" + task + "/bay_opt_" +
                                         str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
                         comparison.to_csv(
                             "results/comparison_bayesian_experiment/" + task + "/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
@@ -390,8 +396,8 @@ def experiment_bayesian_iter_performance():
         "results/iteration_number_experiment/bay_opt_iterations.csv", index=False)
 
 
-experiment_bayesian_iter_performance()
-# experiment_all_datasets_and_estimators()
+#experiment_bayesian_iter_performance()
+experiment_all_datasets_and_estimators()
 
 """
 def debug():
