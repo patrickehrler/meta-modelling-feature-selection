@@ -45,7 +45,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         for feature_name in data.columns:
             # use real values in range (0,1)
             space.append(Integer(0, 1, name=feature_name))
-    elif discretization_method == "round" or discretization_method == "n_highest":
+    elif discretization_method == "round" or discretization_method == "n_highest" or discretization_method == "probabilistic_round":
         for feature_name in data.columns:
             space.append(Real(0, 1, name=feature_name))
 
@@ -118,6 +118,9 @@ def __discretize(data, discretization_method, n_features=None):
     """
     if discretization_method == "round":
         return list(map(lambda x: round(x), data))
+    elif discretization_method == "probabilistic_round":
+        # 0 has probability 1-x, 1 has probability x
+        return list(map(lambda x: np.random.choice(a=[0,1], p=[1-x, x]), data))
     elif discretization_method == "n_highest":
         if n_features is not None:
             vector = [0 for _ in range(len(data))]

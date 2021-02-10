@@ -49,6 +49,7 @@ kernels = {
 }
 discretization_methods = {
     "round": "round",
+    "probabilistic_round": "probabilistic round",
     "n_highest": "n highest",
     "binary": "binary"
 }
@@ -352,14 +353,14 @@ def experiment_bayesian_iter_performance():
     """ Runs bayesian optimization to compare the performance depending on the iteration steps for all datasets/estimators/metrics.
 
     """
+
+    # TODO: include n_features into this process
+    # eg.g run for the same nr of features as the other experiment
+
     # Settings
-    #dataset_id = 1485
     max_calls = 200
     min_calls = 5
     iter_step = 10
-    #learning_method = "GP"
-    #discretization_method = "round"
-    kernel = "MATERN"
 
     # Import datasets
     datasets = {}
@@ -411,17 +412,18 @@ def experiment_bayesian_iter_performance():
 
 
 #experiment_bayesian_iter_performance()
-experiment_all_datasets_and_estimators()
+#experiment_all_datasets_and_estimators()
 
-"""
-def debug():
+
+"""def debug():
     data, target = fetch_openml(
-        data_id=1485, return_X_y=True, as_frame=True)
-    vector = skopt(data, target, n_calls=100)
-    print(vector)
-    print(sum(vector))
-    print(get_score(data, target, vector))"""
+        data_id=1510, return_X_y=True, as_frame=True)
+    print("Downloaded")
+    vector1 = skopt(data, target, n_calls=30, n_features=10, discretization_method="round")
+    print(vector1)
+    print(sum(vector1))
+    print(get_score(data, target, vector1))
 
 
-# debug()
+debug()"""
 # TODO Question: Why does RBF kernel work with binary search space?
