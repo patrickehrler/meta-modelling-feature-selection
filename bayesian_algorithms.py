@@ -100,6 +100,8 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     if discretization_method == "round" and n_features is not None:
         # to limit the number of selected features on "round" we use the n highest features after the last bayesian iteration step
         result_vector = __discretize(optimizer.x, "n_highest", n_features)
+    elif discretization_method == "binary" and n_features is not None:
+        result_vector = __discretize(optimizer.x, "n_highest", n_features) # select n first features
     else:
         result_vector = __discretize(
             optimizer.x, discretization_method, n_features)
@@ -120,7 +122,7 @@ def __discretize(data, discretization_method, n_features=None):
         return list(map(lambda x: round(x), data))
     elif discretization_method == "probabilistic_round":
         # 0 has probability 1-x, 1 has probability x
-        return list(map(lambda x: np.random.choice(a=[0,1], p=[1-x, x]), data))
+        return list(map(lambda x: np.random.choice(a=[0, 1], p=[1-x, x]), data))
     elif discretization_method == "n_highest":
         if n_features is not None:
             vector = [0 for _ in range(len(data))]
