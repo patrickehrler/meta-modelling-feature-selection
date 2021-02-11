@@ -351,11 +351,9 @@ def experiment_all_datasets_and_estimators():
 
 def experiment_bayesian_iter_performance():
     """ Runs bayesian optimization to compare the performance depending on the iteration steps for all datasets/estimators/metrics.
+    Attention: all approaches run with fixed number of to be selected features (most practice relevant)
 
     """
-
-    # TODO: include n_features into this process
-    # eg.g run for the same nr of features as the other experiment
 
     # Settings
     max_calls = 200
@@ -384,34 +382,37 @@ def experiment_bayesian_iter_performance():
             estimators = regression_estimators
 
         # add tasks to multiprocessing pipeline
-        for estimator, metrics in estimators.items():
-            for metric, _ in metrics.items():
-                for learning_method, _ in learning_methods.items():
-                    for discretization_method, _ in discretization_methods.items():
-                        for acq, _ in acquisition_functions.items():
-                            for train_index, test_index in kf:
-                                for n_calls in range(min_calls, max_calls, iter_step):
-                                    if learning_method == "GP":
-                                        for kernel, _ in kernels.items():
-                                            mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, train_index, test_index, pool.apply_async(
-                                                skopt, args=(data.loc[train_index], target.loc[train_index], None, kernel, learning_method, discretization_method, estimator, metric, acq, n_calls))))
-                                    else:
-                                        mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_calls, train_index, test_index, pool.apply_async(
-                                            skopt, args=(data.loc[train_index], target.loc[train_index], None, None, learning_method, discretization_method, estimator, metric, acq, n_calls))))
+        for train_index, test_index in kf:
+            for estimator, metrics in estimators.items():
+                for metric, _ in metrics.items():
+                    for learning_method, _ in learning_methods.items():
+                        for discretization_method, _ in discretization_methods.items():
+                            for acq, _ in acquisition_functions.items():
+                                for n_calls in range(min_calls, max_calls+1, iter_step):
+                                    for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
+                                        if learning_method == "GP":
+                                            for kernel, _ in kernels.items():
+                                                mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, n_features, train_index, test_index, pool.apply_async(
+                                                    skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, n_calls))))
+                                        else:
+                                            mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_calls, n_features, train_index, test_index, pool.apply_async(
+                                                skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, n_calls))))
 
     # get finished tasks (display tqdm progressbar)
-    results = [tuple(r[0:10]) + tuple(r[10].get()) for r in tqdm(mp_results)]
+    results = [tuple(r[0:11]) + tuple([(r[11].get())]) for r in tqdm(mp_results)]
 
     # store in pandas dataframe
-    df_result = pd.DataFrame(([dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, get_score(data.loc[train_index], target.loc[train_index], vector, estimator, metric), get_score(data.loc[test_index], target.loc[test_index], vector, estimator, metric)] for dataset_id,
-                              estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, train_index, test_index, vector in results), columns=["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Iteration Steps", "Training Score", "Testing Score"])
-    df_result_grouped = df_result.groupby(["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Iteration Steps"], as_index=False).agg(
+    list_columns = ["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Number Features", "Iteration Steps"]
+    df_result = pd.DataFrame(([dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, n_features, get_score(data.loc[train_index], target.loc[train_index], vector, estimator, metric), get_score(data.loc[test_index], target.loc[test_index], vector, estimator, metric)] for dataset_id,
+                              estimator, metric, learning_method, kernel, discretization_method, acq, n_features, n_calls, train_index, test_index, vector in results), columns=list_columns+["Training Score", "Testing Score"])
+    df_result_grouped = df_result.groupby(list_columns, as_index=False).agg(
         {"Training Score": ["mean"], "Testing Score": ["mean"]})
-    df_result_grouped.to_csv(
+    df_result_grouped_ordered = df_result_grouped.sort_values(by=list_columns, ascending=True) 
+    df_result_grouped_ordered.to_csv(
         "results/iteration_number_experiment/bay_opt_iterations.csv", index=False)
 
 
-#experiment_bayesian_iter_performance()
+experiment_bayesian_iter_performance()
 #experiment_all_datasets_and_estimators()
 
 
