@@ -1,4 +1,4 @@
-from bayesian_algorithms import skopt
+from bayesian_algorithms import skopt, discretize
 from comparison_algorithms import rfe, sfs, sfm, vt, skb
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
@@ -357,57 +357,78 @@ def experiment_bayesian_iter_performance():
 
     # Settings
     max_calls = 200
-    min_calls = 5
-    iter_step = 10
 
     # Import datasets
     datasets = {}
     for task, dataset in config.data_ids.items():
+        datasets[task] = {}
         for dataset_id, flag in dataset.items():
             if flag == True:
-                datasets[dataset_id] = fetch_openml(
+                datasets[task][dataset_id] = fetch_openml(
                     data_id=dataset_id, return_X_y=True, as_frame=True)
 
     # create multiprocess pool
     pool = mp.Pool(processes=config.n_processes)
     mp_results = []
 
-    for dataset_id, (data, target) in datasets.items():
-        # use kfold cross validation
-        kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
+    for task, data_iterable in datasets.items():
+        for dataset_id, (data, target) in data_iterable.items():
+            # use kfold cross validation
+            kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
 
-        if task == "classification":
-            estimators = classification_estimators
-        else:
-            estimators = regression_estimators
+            if task == "classification":
+                estimators = classification_estimators
+            else:
+                estimators = regression_estimators
 
-        # add tasks to multiprocessing pipeline
-        for train_index, test_index in kf:
-            for estimator, metrics in estimators.items():
-                for metric, _ in metrics.items():
-                    for learning_method, _ in learning_methods.items():
-                        for discretization_method, _ in discretization_methods.items():
-                            for acq, _ in acquisition_functions.items():
-                                for n_calls in range(min_calls, max_calls+1, iter_step):
+            # add tasks to multiprocessing pipeline
+            for train_index, test_index in kf:
+                for estimator, metrics in estimators.items():
+                    for metric, _ in metrics.items():
+                        for learning_method, _ in learning_methods.items():
+                            for discretization_method, _ in discretization_methods.items():
+                                for acq, _ in acquisition_functions.items():
+                                    # TODO: currently final feature set is always limited, maybe also include case where bay opt selects an undefined number of features
                                     for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                                         if learning_method == "GP":
                                             for kernel, _ in kernels.items():
-                                                mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, n_features, train_index, test_index, pool.apply_async(
-                                                    skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, n_calls))))
+                                                mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, max_calls, n_features, train_index, test_index, pool.apply_async(
+                                                    skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, max_calls, True))))
                                         else:
-                                            mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_calls, n_features, train_index, test_index, pool.apply_async(
-                                                skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, n_calls))))
+                                            mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, max_calls, n_features, train_index, test_index, pool.apply_async(
+                                                skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, max_calls, True))))
 
     # get finished tasks (display tqdm progressbar)
-    results = [tuple(r[0:11]) + tuple([(r[11].get())]) for r in tqdm(mp_results)]
+    results = [tuple(r[0:11]) + tuple([r[11].get()]) for r in tqdm(mp_results)]
 
     # store in pandas dataframe
     list_columns = ["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Number Features", "Iteration Steps"]
-    df_result = pd.DataFrame(([dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_calls, n_features, get_score(data.loc[train_index], target.loc[train_index], vector, estimator, metric), get_score(data.loc[test_index], target.loc[test_index], vector, estimator, metric)] for dataset_id,
-                              estimator, metric, learning_method, kernel, discretization_method, acq, n_features, n_calls, train_index, test_index, vector in results), columns=list_columns+["Training Score", "Testing Score"])
+
+    # extract data and create dataframe
+    df = []
+    for dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, max_calls, n_features, train_index, test_index, (final_vector, vector_list, fun_list) in results:
+        vector_list = vector_list
+        current_max_training_score = 0
+        current_max_test_score = 0
+        max_vector = []
+        for n_calls in range(0,len(vector_list),1):
+            # if new maximum is found at iteration step, add to result dataframe
+            training_score = fun_list[n_calls]
+            if current_max_training_score < training_score:
+                current_max_training_score = training_score
+                # calculate current max feature vector
+                if n_features is None:
+                    max_vector = vector_list[n_calls]
+                else:
+                    max_vector = discretize(vector_list[n_calls], "n_highest", n_features)
+                # calculate test score based on vector that has max training score
+                current_max_test_score = get_score(data.loc[test_index], target.loc[test_index], max_vector, estimator, metric)
+            df.append([dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, sum(max_vector), n_calls, current_max_training_score, current_max_test_score])
+
+    df_result = pd.DataFrame(df, columns=list_columns+["Training Score", "Testing Score"])
     df_result_grouped = df_result.groupby(list_columns, as_index=False).agg(
         {"Training Score": ["mean"], "Testing Score": ["mean"]})
-    df_result_grouped_ordered = df_result_grouped.sort_values(by=list_columns, ascending=True) 
+    df_result_grouped_ordered = df_result_grouped.sort_values(by=["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Iteration Steps"], ascending=True) 
     df_result_grouped_ordered.to_csv(
         "results/iteration_number_experiment/bay_opt_iterations.csv", index=False)
 
@@ -420,11 +441,14 @@ experiment_bayesian_iter_performance()
     data, target = fetch_openml(
         data_id=1510, return_X_y=True, as_frame=True)
     print("Downloaded")
-    vector1 = skopt(data, target, n_calls=30, n_features=10, discretization_method="round")
+    vector1, x,y = skopt(data, target, estimator="svc_linear", metric="accuracy", n_calls=40, learning_method = "GP", kernel="MATERN", discretization_method="round", intermediate_results=True)
     print(vector1)
-    print(sum(vector1))
-    print(get_score(data, target, vector1))
+    print(x)
+    print(y)
+    #print(sum(vector1))
+    #print(get_score(data, target, vector1, "svc_linear", "accuracy"))
+    #print(sett)"""
 
 
-debug()"""
+#debug()
 # TODO Question: Why does RBF kernel work with binary search space?

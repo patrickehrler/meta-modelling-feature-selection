@@ -12,7 +12,7 @@ from utils import get_score
 import numpy as np
 
 
-def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, n_random_starts=5, random_state=123, noise="gaussian"):
+def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, intermediate_results=False, n_random_starts=5, random_state=123, noise="gaussian"):
     """ Run Scikit-Optimize Implementation of Bayesian Optimization
 
     Keyword arguments:
@@ -25,6 +25,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     discretization_method -- define method on how to work with search space
     acq_func -- aquisition function to be used
     n_calls -- number of iterations
+    intermediate_results -- if True a set of result vectors of each iteration step will be returned
     n_random_starts -- 
     random_state -- 
     noise -- 
@@ -33,7 +34,8 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     # define black box function
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
-        mask = __discretize(args[0], discretization_method, n_features)
+        mask = discretize(args[0], discretization_method, n_features)
+        
         # get score from estimator
         score = 1 - get_score(data, target, mask, estimator, metric)
 
@@ -48,6 +50,9 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     elif discretization_method == "round" or discretization_method == "n_highest" or discretization_method == "probabilistic_round":
         for feature_name in data.columns:
             space.append(Real(0, 1, name=feature_name))
+    else:
+        raise ValueError(
+                "Undefined discretizetion method.")
 
     # define base estimator
     base_estimator = None
@@ -97,19 +102,25 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         random_state=random_state,  # the random seed
         verbose=False
     )
+
     if discretization_method == "round" and n_features is not None:
         # to limit the number of selected features on "round" we use the n highest features after the last bayesian iteration step
-        result_vector = __discretize(optimizer.x, "n_highest", n_features)
+        result_vector = discretize(optimizer.x, "n_highest", n_features)
     elif discretization_method == "binary" and n_features is not None:
-        result_vector = __discretize(optimizer.x, "n_highest", n_features) # select n first features
+        result_vector = discretize(optimizer.x, "n_highest", n_features) # select n first features
     else:
-        result_vector = __discretize(
+        result_vector = discretize(
             optimizer.x, discretization_method, n_features)
 
-    return result_vector
+    if intermediate_results == True:
+        result_vector_set = list(map(lambda x: discretize(x, discretization_method, n_features), optimizer.x_iters))
+        result_fun_set = list(map(lambda x: 1-x, optimizer.func_vals))
+        return result_vector, result_vector_set, result_fun_set
+    else:
+        return result_vector
 
 
-def __discretize(data, discretization_method, n_features=None):
+def discretize(data, discretization_method, n_features=None):
     """ Apply discretization method on vector
 
     Keyword arguments:
