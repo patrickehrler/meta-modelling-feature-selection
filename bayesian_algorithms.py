@@ -125,7 +125,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
             optimizer.x, discretization_method, n_features)
 
     if intermediate_results == True:
-        result_vector_set = list(map(lambda x: discretize(x, discretization_method, n_features), optimizer.x_iters))
+        result_vector_set = optimizer.x_iters
         result_fun_set = list(map(lambda x: 1-x, optimizer.func_vals))
         return result_vector, result_vector_set, result_fun_set
     else:

@@ -58,7 +58,7 @@ def experiment_bayesian_iter_performance():
 
                 # extract data and create dataframe
                 df = []
-                for dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, train_index, test_index, (_, vector_list, fun_list) in results:
+                for dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, (_, vector_list, fun_list) in results:
                     vector_list = vector_list
                     current_max_training_score = 0
                     current_max_test_score = 0
@@ -75,7 +75,7 @@ def experiment_bayesian_iter_performance():
                                 max_vector = discretize(vector_list[n_calls], "n_highest", n_features)
                             # calculate test score based on vector that has max training score
                             current_max_test_score = get_score(data.loc[test_index], target.loc[test_index], max_vector, estimator, metric)
-                        df.append([dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, sum(max_vector), n_calls, current_max_training_score, current_max_test_score])
+                        df.append([dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, n_calls, current_max_training_score, current_max_test_score])
 
                 df_result = pd.DataFrame(df, columns=list_columns+["Training Score", "Testing Score"])
                 df_result_grouped = df_result.groupby(list_columns, as_index=False).agg(
