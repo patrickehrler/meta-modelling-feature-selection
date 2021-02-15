@@ -1,3 +1,4 @@
+from numpy.lib.function_base import average
 from sklearn.utils.validation import check_random_state
 from skopt.learning.forest import ExtraTreesRegressor, RandomForestRegressor
 from skopt.learning.gaussian_process.gpr import GaussianProcessRegressor
@@ -10,9 +11,11 @@ from skopt.space import Integer, Real
 from skopt.utils import cook_estimator
 from utils import get_score
 import numpy as np
+import config
+from sklearn.model_selection import KFold
 
 
-def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, intermediate_results=False, n_random_starts=5, random_state=123, noise="gaussian"):
+def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, intermediate_results=False, cross_validation=0, n_random_starts=5, random_state=123, noise="gaussian"):
     """ Run Scikit-Optimize Implementation of Bayesian Optimization
 
     Keyword arguments:
@@ -31,13 +34,22 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     noise -- 
 
     """
+
     # define black box function
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
         mask = discretize(args[0], discretization_method, n_features)
         
-        # get score from estimator
-        score = 1 - get_score(data, target, mask, estimator, metric)
+        if cross_validation != 0:
+            kf = KFold(n_splits=cross_validation, shuffle=True).split(data)
+            score_list = []
+            for train_index, _ in kf:
+                # get score from estimator
+                score_list.append(1 - get_score(data.loc[train_index], target.loc[train_index], mask, estimator, metric))
+            score = sum(score_list) / len(score_list)
+        else:
+            # get score from estimator
+            score = 1 - get_score(data, target, mask, estimator, metric)
 
         return score
 
