@@ -7,14 +7,15 @@ def get_datasets(number_of_classes):
                 (dataset_overview['NumberOfClasses'] == number_of_classes) &
                 (dataset_overview['NumberOfNumericFeatures'] >= 1000) &  # includes target variable
                 (dataset_overview['NumberOfNumericFeatures'] <= 50000) &
-                (dataset_overview['NumberOfInstances'] >= 100) &
+                (dataset_overview['NumberOfInstances'] >= 500) &
                 (dataset_overview['NumberOfInstances'] <= 10000) &
                 (dataset_overview['NumberOfMissingValues'] == 0)
             ]
     return dataset_overview
 
 classification_binary_datasets = get_datasets(2)
-regression_datasets = get_datasets(0)
+#regression_datasets = get_datasets(0)
 
+print(classification_binary_datasets)
 classification_binary_datasets.to_csv("datasets/classification_binary_datasets.csv", index=False)
-regression_datasets.to_csv("datasets/regression_datasets.csv", index=False)
+#regression_datasets.to_csv("datasets/regression_datasets.csv", index=False)

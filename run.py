@@ -7,73 +7,7 @@ from utils import get_score, add_testing_score
 import config
 import multiprocessing as mp
 import pandas as pd
-
-
-# Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
-classification_estimators = {
-    "svc_linear": {
-        "accuracy": "Support Vector Classification - Accuracy Score"
-    }
-    # "k_neighbours_classifier": { # results in error message
-    #    "accuracy": "k Neighbours Classification - Accuracy Score"
-    # }
-}
-regression_estimators = {
-    "linear_regression": {
-        "r2": "Linear Regression - Coefficient of Determination",
-        "explained_variance": "Linear Regression - Explained variance regression score function"
-    },
-    "svr_linear": {
-        "r2": "Support Vector Regression - Coefficient of Determination",
-        "explained_variance": "Support Vector Regression - Explained variance regression score function"
-    }
-}
-
-# Bayesian Optimization Properties
-bay_opt_parameters = ["Approach", "Learning Method",
-                      "Kernel", "Discretization Method", "Acquisition Function", "n_features"]
-bayesian_approaches = {
-    skopt: "Scikit Optimize"
-}
-learning_methods = {
-    "GP": "Gaussian Process",
-    "RF": "Random Forest",
-    "ET": "Extra Trees",
-    "GBRT": "Gradient Boosting Quantile"
-}
-kernels = {
-    # kernels for Gaussian Processes only
-    "MATERN": "Matern",
-    "HAMMING": "Hamming",
-    "RBF": "Radial Basis Functions"  # squared-exponential kernel
-}
-discretization_methods = {
-    "round": "round",
-    "probabilistic_round": "probabilistic round",
-    "n_highest": "n highest",
-    "binary": "binary"
-}
-acquisition_functions = {
-    "LCB": "lower confidence bound",
-    "EI": "expected improvement",
-    "PI": "probability of improvement"
-}
-
-# Comparison Approaches Properties
-comparison_parameters = ["Approach", "Algorithm", "n_features"]
-comparison_approaches = {
-    "filter": {
-        vt: "Variance Threshold",
-        skb: "SelectKBest"
-    },
-    "wrapper": {
-        # sfs: "Sequential Feature Selection" # bad performance when many features
-        rfe: "Recursive Feature Selection"
-    },
-    "embedded": {
-        sfm: "Select From Model"
-    }
-}
+import approaches
 
 
 def init_progress_bar():
@@ -95,11 +29,11 @@ def init_progress_bar():
 
     # calculate number of estimators/metrics
     number_regression_estimators = 0
-    for _, iter in regression_estimators.items():
+    for _, iter in approaches.regression_estimators.items():
         for _, _ in iter.items():
             number_regression_estimators += 1
     number_classification_estimators = 0
-    for _, iter in classification_estimators.items():
+    for _, iter in approaches.classification_estimators.items():
         for _, _ in iter.items():
             number_classification_estimators += 1
 
@@ -108,12 +42,12 @@ def init_progress_bar():
                                        ) + (number_datasets_regression * number_regression_estimators)) * config.n_splits
 
     # calculate number of bayesian approaches
-    number_of_bayesian = (len(bayesian_approaches) * len(discretization_methods) * len(acquisition_functions)) * (
-        (len(learning_methods)-1) + len(kernels))  # only gaussian processes use kernels
+    number_of_bayesian = (len(approaches.bayesian_approaches) * len(approaches.discretization_methods) * len(approaches.acquisition_functions)) * (
+        (len(approaches.learning_methods)-1) + len(approaches.kernels))  # only gaussian processes use kernels
 
     # calculate number of comparison approaches
     number_of_comparison = 0
-    for _, approach in comparison_approaches.items():
+    for _, approach in approaches.comparison_approaches.items():
         for _, _ in approach.items():
             number_of_comparison += 1
 
@@ -141,13 +75,13 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
     """
     # Define result dataframes
     df_results = pd.DataFrame(
-        columns=bay_opt_parameters+["Vector", "Training Score"])
-    for algo, algo_descr in bayesian_approaches.items():
-        for learn, learn_descr in learning_methods.items():
-            for discr, discr_descr in discretization_methods.items():
-                for acq, _ in acquisition_functions.items():
+        columns=approaches.bay_opt_parameters+["Vector", "Training Score"])
+    for algo, algo_descr in approaches.bayesian_approaches.items():
+        for learn, learn_descr in approaches.learning_methods.items():
+            for discr, discr_descr in approaches.discretization_methods.items():
+                for acq, _ in approaches.acquisition_functions.items():
                     if learn == "GP":
-                        for kernel, kernel_descr in kernels.items():
+                        for kernel, kernel_descr in approaches.kernels.items():
                             vector = []
                             if discr == "n_highest" or discr == "round":
                                 for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
@@ -221,8 +155,8 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
     """
     # Define result dataframe
     df_results = pd.DataFrame(
-        columns=comparison_parameters+["Vector", "Training Score"])
-    for approach, approach_descr in comparison_approaches.items():
+        columns=approaches.comparison_parameters+["Vector", "Training Score"])
+    for approach, approach_descr in approaches.comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
             if algo == vt:
                 vector = algo(data=data_training, target=target_training)
@@ -275,10 +209,10 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
         data_id=openml_data_id, return_X_y=True, as_frame=True)
 
     # Initialize result dataframe
-    df_bay_opt = pd.DataFrame(columns=bay_opt_parameters +
+    df_bay_opt = pd.DataFrame(columns=approaches.bay_opt_parameters +
                               ["Vector", "Training Score", "Testing Score"])
     df_comparison = pd.DataFrame(
-        columns=comparison_parameters+["Vector", "Training Score", "Testing Score"])
+        columns=approaches.comparison_parameters+["Vector", "Training Score", "Testing Score"])
 
     # Split dataset into testing and training data then run all approaches in parallel
     kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
@@ -310,9 +244,9 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
         lambda row: sum(row["Vector"]), axis=1)
 
     # Group results of cross-validation runs and determine min, max and mean of score-vaules and selected features
-    df_bay_opt_grouped = df_bay_opt.groupby(bay_opt_parameters, as_index=False).agg(
+    df_bay_opt_grouped = df_bay_opt.groupby(approaches.bay_opt_parameters, as_index=False).agg(
         {"actual_features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
-    df_comparison_grouped = df_comparison.groupby(comparison_parameters, as_index=False).agg(
+    df_comparison_grouped = df_comparison.groupby(approaches.comparison_parameters, as_index=False).agg(
         {"actual_features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
 
     return df_bay_opt_grouped, df_comparison_grouped
@@ -332,9 +266,9 @@ def experiment_all_datasets_and_estimators():
         for dataset_id, flag in dataset.items():
             if flag == True:
                 if task == "classification":
-                    estimators = classification_estimators
+                    estimators = approaches.classification_estimators
                 else:
-                    estimators = regression_estimators
+                    estimators = approaches.regression_estimators
                 for estimator, metrics in estimators.items():
                     for metric, _ in metrics.items():
                         bayesian, comparison = __run_all_bayesian_comparison(
@@ -348,107 +282,21 @@ def experiment_all_datasets_and_estimators():
     queue.put(None)
     proc.join()
 
-
-def experiment_bayesian_iter_performance():
-    """ Runs bayesian optimization to compare the performance depending on the iteration steps for all datasets/estimators/metrics.
-    Attention: all approaches run with fixed number of to be selected features (most practice relevant)
-
-    """
-
-    # Settings
-    max_calls = 200
-
-    # Import datasets
-    datasets = {}
-    for task, dataset in config.data_ids.items():
-        datasets[task] = {}
-        for dataset_id, flag in dataset.items():
-            if flag == True:
-                datasets[task][dataset_id] = fetch_openml(
-                    data_id=dataset_id, return_X_y=True, as_frame=True)
-
-    # create multiprocess pool
-    pool = mp.Pool(processes=config.n_processes)
-    mp_results = []
-
-    for task, data_iterable in datasets.items():
-        for dataset_id, (data, target) in data_iterable.items():
-            # use kfold cross validation
-            kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
-
-            if task == "classification":
-                estimators = classification_estimators
-            else:
-                estimators = regression_estimators
-
-            # add tasks to multiprocessing pipeline
-            for train_index, test_index in kf:
-                for estimator, metrics in estimators.items():
-                    for metric, _ in metrics.items():
-                        for learning_method, _ in learning_methods.items():
-                            for discretization_method, _ in discretization_methods.items():
-                                for acq, _ in acquisition_functions.items():
-                                    # TODO: currently final feature set is always limited, maybe also include case where bay opt selects an undefined number of features
-                                    for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                        if learning_method == "GP":
-                                            for kernel, _ in kernels.items():
-                                                mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, max_calls, n_features, train_index, test_index, pool.apply_async(
-                                                    skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, max_calls, True))))
-                                        else:
-                                            mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, max_calls, n_features, train_index, test_index, pool.apply_async(
-                                                skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, max_calls, True))))
-
-    # get finished tasks (display tqdm progressbar)
-    results = [tuple(r[0:11]) + tuple([r[11].get()]) for r in tqdm(mp_results)]
-
-    # store in pandas dataframe
-    list_columns = ["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Number Features", "Iteration Steps"]
-
-    # extract data and create dataframe
-    df = []
-    for dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, max_calls, n_features, train_index, test_index, (final_vector, vector_list, fun_list) in results:
-        vector_list = vector_list
-        current_max_training_score = 0
-        current_max_test_score = 0
-        max_vector = []
-        for n_calls in range(0,len(vector_list),1):
-            # if new maximum is found at iteration step, add to result dataframe
-            training_score = fun_list[n_calls]
-            if current_max_training_score < training_score:
-                current_max_training_score = training_score
-                # calculate current max feature vector
-                if n_features is None:
-                    max_vector = vector_list[n_calls]
-                else:
-                    max_vector = discretize(vector_list[n_calls], "n_highest", n_features)
-                # calculate test score based on vector that has max training score
-                current_max_test_score = get_score(data.loc[test_index], target.loc[test_index], max_vector, estimator, metric)
-            df.append([dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, sum(max_vector), n_calls, current_max_training_score, current_max_test_score])
-
-    df_result = pd.DataFrame(df, columns=list_columns+["Training Score", "Testing Score"])
-    df_result_grouped = df_result.groupby(list_columns, as_index=False).agg(
-        {"Training Score": ["mean"], "Testing Score": ["mean"]})
-    df_result_grouped_ordered = df_result_grouped.sort_values(by=["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Iteration Steps"], ascending=True) 
-    df_result_grouped_ordered.to_csv(
-        "results/iteration_number_experiment/bay_opt_iterations.csv", index=False)
-
-
-experiment_bayesian_iter_performance()
 #experiment_all_datasets_and_estimators()
 
 
 """def debug():
     data, target = fetch_openml(
-        data_id=1510, return_X_y=True, as_frame=True)
+        data_id=1458, return_X_y=True, as_frame=True)
     print("Downloaded")
-    vector1, x,y = skopt(data, target, estimator="svc_linear", metric="accuracy", n_calls=40, learning_method = "GP", kernel="MATERN", discretization_method="round", intermediate_results=True)
+    vector1 = skopt(data, target, estimator="svc_linear", metric="accuracy", n_calls=5, n_features=10, learning_method = "GP", kernel="MATERN", discretization_method="n_highest", intermediate_results=False)
     print(vector1)
-    print(x)
-    print(y)
+    #print(x)
+    #print(y)
     #print(sum(vector1))
-    #print(get_score(data, target, vector1, "svc_linear", "accuracy"))
-    #print(sett)"""
+    print(get_score(data, target, vector1, "svc_linear", "accuracy"))
+    #print(sett)
 
 
-#debug()
+debug()"""
 # TODO Question: Why does RBF kernel work with binary search space?
