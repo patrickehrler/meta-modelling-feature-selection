@@ -29,20 +29,21 @@ bayesian_approaches = {
 }
 learning_methods = {
     "GP": "Gaussian Process",
-    "RF": "Random Forest",
+    #"RF": "Random Forest",
     #"ET": "Extra Trees",
     #"GBRT": "Gradient Boosting Quantile"
 }
 kernels = {
     # kernels for Gaussian Processes only
     "MATERN": "Matern",
-    "HAMMING": "Hamming",
+    #"HAMMING": "Hamming",
     #"RBF": "Radial Basis Functions"  # squared-exponential kernel
 }
 discretization_methods = {
     "round": "round",
-    "probabilistic_round": "probabilistic round",
-    "n_highest": "n highest",
+    #"probabilistic_round": "probabilistic round",
+    #"n_highest": "n highest",
+    #"categorical": "Categorical"
     #"binary": "binary"
 }
 acquisition_functions = {

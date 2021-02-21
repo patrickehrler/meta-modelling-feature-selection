@@ -73,9 +73,9 @@ def get_estimator(estimator):
     if estimator == "linear_regression":
         return LinearRegression()
     elif estimator == "svr_linear":
-        return svm.LinearSVR(dual=False, loss="squared_epsilon_insensitive", max_iter=10000) # dual false, because n_samples > n_features
+        return svm.LinearSVR(dual=False, loss="squared_epsilon_insensitive", max_iter=1000) # dual false, because n_samples > n_features
     elif estimator == "svc_linear":
-        return svm.LinearSVC(dual=False, max_iter=10000) 
+        return svm.LinearSVC(dual=False, max_iter=1000) 
     elif estimator == "k_neighbours_classifier":
         return KNeighborsClassifier(n_neighbors=5)
     else:

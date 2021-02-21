@@ -40,8 +40,6 @@ data_ids = {
         1165: False,
         1166: False,
         4134: False,
-        40593: False,
-        40596: False,
         41142: False,
         # test datasets
         1510: False, # 30 features

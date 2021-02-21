@@ -1,4 +1,4 @@
-from bayesian_algorithms import skopt, discretize
+from bayesian_algorithms import skopt, discretize, gpyopt
 from comparison_algorithms import rfe, sfs, sfm, vt, skb
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
@@ -285,18 +285,20 @@ def experiment_all_datasets_and_estimators():
 #experiment_all_datasets_and_estimators()
 
 
-"""def debug():
+def debug():
     data, target = fetch_openml(
-        data_id=1458, return_X_y=True, as_frame=True)
+        data_id=1510, return_X_y=True, as_frame=True)
     print("Downloaded")
-    vector1 = skopt(data, target, estimator="svc_linear", metric="accuracy", n_calls=5, n_features=10, learning_method = "GP", kernel="MATERN", discretization_method="n_highest", intermediate_results=False)
+    #
+    #vector1,x,y = skopt(data, target, estimator="svc_linear", metric="accuracy", n_calls=6, n_features=5, learning_method = "GP", kernel="RBF", discretization_method="round", acq_func="PI", intermediate_results=True)
+    vector1, x, y = gpyopt(data, target, discretization_method="round", n_features=None, estimator="svc_linear", cross_validation=0, metric="accuracy", learning_method="GP", kernel="MATERN", n_calls=5, intermediate_results=True)
     print(vector1)
-    #print(x)
+    print(x)
     #print(y)
     #print(sum(vector1))
-    print(get_score(data, target, vector1, "svc_linear", "accuracy"))
+    #print(get_score(data, target, vector1, "svc_linear", "accuracy"))
     #print(sett)
 
 
-debug()"""
-# TODO Question: Why does RBF kernel work with binary search space?
+debug()
+# TODO Question: Why does RBF kernel work with binary search space? -> Transformation wie in Fundamentals??
