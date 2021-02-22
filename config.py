@@ -8,16 +8,16 @@
 n_calls = 50
 # 2. Iteration Experiment
 # 2.1 Maximum number of iterations
-max_calls = 5
+max_calls = 200
 
 # number of processes for parallelization
-n_processes = 32
+n_processes = 4
 
 # number of splits for cross-validation
-n_splits = 5
+n_splits = 2
 
 # number of features to be selected
-min_nr_features = 5
+min_nr_features = 20
 max_nr_features = 20
 iter_step_nr_features = 5
 
@@ -25,8 +25,8 @@ iter_step_nr_features = 5
 data_ids = {
     "classification": {
         # experiment datasets
-        1039: True,
-        1128: False,
+        1039: False,
+        1128: True,
         1130: False,
         1134: False,
         1137: False,
@@ -42,7 +42,7 @@ data_ids = {
         4134: False,
         41142: False,
         # test datasets
-        1510: False, # 30 features
+        1510: True, # 30 features
         1485: False, # 500 features
         1458: False, # 10000 features
         1079: False # 22278 features

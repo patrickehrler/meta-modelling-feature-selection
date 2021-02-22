@@ -4,7 +4,7 @@ from skopt.learning.gaussian_process.gpr import GaussianProcessRegressor
 from skopt.learning.gaussian_process.kernels import (RBF, Matern, HammingKernel)
 from skopt.optimizer import base_minimize
 from skopt.space import Integer, Real, Categorical
-from skopt.utils import cook_estimator, normalize_dimensions
+from skopt.utils import cook_estimator
 from utils import get_score
 import numpy as np
 from sklearn.model_selection import KFold
@@ -147,18 +147,18 @@ def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", dis
     noise -- 
 
     """
-    
+
     # define black box function
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
         mask = discretize(args[0][0], discretization_method, n_features)
-
+    
         if cross_validation != 0:
             kf = KFold(n_splits=cross_validation, shuffle=True).split(data)
             score_list = []
             for train_index, _ in kf:
                 # get score from estimator
-                score_list.append(get_score(data.loc[train_index], target.loc[train_index], mask, estimator, metric))
+                score_list.append(get_score(data.iloc[train_index], target.iloc[train_index], mask, estimator, metric))
             score = sum(score_list) / len(score_list)
         else:
             # get score from estimator

@@ -1,5 +1,5 @@
 from sklearn.datasets import fetch_openml
-from bayesian_algorithms import skopt, discretize
+from bayesian_algorithms import skopt, discretize, gpyopt
 import pandas as pd
 from sklearn.model_selection import KFold
 from tqdm import tqdm
@@ -10,8 +10,9 @@ import approaches
 
 def experiment_bayesian_iter_performance():
     """ Runs bayesian optimization to compare the performance depending on the iteration steps for all datasets/estimators/metrics.
-    Attention: all approaches run with fixed number of to be selected features (most practice relevant)
-
+    Attention:  - all approaches run with fixed number of to be selected features (most practice relevant)
+                - Training score is the actual final function value used for optimization (might be 1 for "round" or "probabilistic_round" because many features can be selected)
+                - Testing score is the score on the test data based on the n highest features (of the final vector)
     """
 
     for task, dataset in config.data_ids.items():
@@ -44,11 +45,19 @@ def experiment_bayesian_iter_performance():
                                         for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                                             if learning_method == "GP":
                                                 for kernel, _ in approaches.kernels.items():
-                                                    mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True))))
+                                                    if kernel == "HAMMING":
+                                                        # hamming kernel only for categorical and binary search-spaces
+                                                        if discretization_method == "categorical" or discretization_method == "binary":
+                                                            mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
+                                                            skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True))))
+                                                    else:
+                                                        mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
+                                                        gpyopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True))))
                                             else:
-                                                mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                    skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True))))
+                                                # random forest only for categorical or binary search-spaces
+                                                if learning_method == "categorical" or learning_method == "binary":
+                                                    mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_features, test_index, pool.apply_async(
+                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True))))
 
                 # get finished tasks (display tqdm progressbar)
                 results = [tuple(r[0:9]) + tuple([r[9].get()]) for r in tqdm(mp_results)]

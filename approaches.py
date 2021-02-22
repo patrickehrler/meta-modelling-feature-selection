@@ -37,14 +37,14 @@ kernels = {
     # kernels for Gaussian Processes only
     "MATERN": "Matern",
     #"HAMMING": "Hamming",
-    #"RBF": "Radial Basis Functions"  # squared-exponential kernel
+    "RBF": "Radial Basis Functions"  # squared-exponential kernel
 }
 discretization_methods = {
     "round": "round",
-    #"probabilistic_round": "probabilistic round",
-    #"n_highest": "n highest",
-    #"categorical": "Categorical"
-    #"binary": "binary"
+    "probabilistic_round": "probabilistic round",
+    "n_highest": "n highest",
+    "categorical": "Categorical",
+    "binary": "binary"
 }
 acquisition_functions = {
     #"LCB": "lower confidence bound",
