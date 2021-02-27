@@ -3,6 +3,7 @@ from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from sklearn.feature_selection import RFE, SelectFromModel, VarianceThreshold, SelectKBest, f_classif, mutual_info_classif
 from utils import convert_vector, get_estimator
 import numpy as np
+from scipy.stats import pearsonr
 
 
 def sfs(data, target, n_features=None, estimator="linear_regression", metric=None):
@@ -99,7 +100,7 @@ def vt(data, target=None):
     return result_vector
 
 
-def skb(data, target, n_features, estimator=None):
+def n_best_anova_f(data, target, n_features, estimator=None):
     """ Run SelectKBest feature selection.
 
     Keyword arguments:
@@ -109,14 +110,14 @@ def skb(data, target, n_features, estimator=None):
     estimator -- ignored (only for compatibility)
 
     """
-    # TODO: try different score_func (chi2)
+
     skb_selection = SelectKBest(score_func=f_classif, k=n_features).fit(data, target)
 
     result_vector = convert_vector(skb_selection.get_support())
 
     return result_vector
 
-def mutual(data, target, n_features, estimator=None):
+def n_best_mutual(data, target, n_features, estimator=None):
     """ Calculate mutual score for each feature, then select n highest features.
 
     Keyword arguments:
@@ -127,9 +128,25 @@ def mutual(data, target, n_features, estimator=None):
 
     """
 
-    mutual_selection = mutual_info_classif(data, target)
+    mutual_selection = SelectKBest(score_func=mutual_info_classif, k=n_features).fit(data,target)
 
     # select n features with highest mutual score
-    result_vector = discretize(mutual_selection, "n_highest", n_features)
+    result_vector = convert_vector(mutual_selection.get_support())
+
+    return result_vector
+
+def n_best_pearsonr(data, target, n_features, estimator=None):
+    """ Calculate pearson correlation for each feature, then select n highest features.
+
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to select
+    estimator -- ignored (only for compatibility)
+
+    """
+
+    pearson_selection = [abs(pearsonr(data.loc[:,feature], target.astype("float"))[1]) for feature in data.columns]
+    result_vector = discretize(pearson_selection, "n_highest", n_features)
 
     return result_vector

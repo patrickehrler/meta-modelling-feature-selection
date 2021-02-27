@@ -1,5 +1,5 @@
 from bayesian_algorithms import skopt
-from comparison_algorithms import rfe, sfs, sfm, vt, skb, mutual
+from comparison_algorithms import rfe, sfs, sfm, vt, n_best_anova_f, n_best_mutual, n_best_pearsonr
 
 # Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
 classification_estimators = {
@@ -57,8 +57,9 @@ comparison_parameters = ["Approach", "Algorithm", "n_features"]
 comparison_approaches = {
     "filter": {
         vt: "Variance Threshold",
-        skb: "SelectKBest",
-        mutual: "Highest mutual score"
+        n_best_anova_f: "SelectKBest",
+        n_best_mutual: "Highest mutual score",
+        #n_best_pearsonr: "Highest pearson correlation" # probably not useful for classification targets
     },
     "wrapper": {
         # sfs: "Sequential Feature Selection" # bad performance when many features
