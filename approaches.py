@@ -8,6 +8,9 @@ classification_estimators = {
     },
     "k_neighbours_classifier": { # results in error message
         "accuracy": "k Neighbours Classification - Accuracy Score"
+    },
+    "random_forest": {
+        "accuracy": "Random Forest - Accuracy Score"
     }
 }
 regression_estimators = {

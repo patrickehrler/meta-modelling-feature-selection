@@ -3,9 +3,10 @@ from sklearn import svm
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, explained_variance_score, accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
 
 
-def get_score(data, target, mask, estimator="linear_regression", metric="r2"):
+def get_score(data_training, data_test, target_training, target_test, mask, estimator="linear_regression", metric="r2"):
     """ Returns score for a given feature selection and an estimator.
 
     Keyword arguments:
@@ -16,18 +17,26 @@ def get_score(data, target, mask, estimator="linear_regression", metric="r2"):
     metric -- metric used to calculate score
 
     """
-    selected_features = list(compress(data.columns, mask))
-    filtered_data = data[selected_features]
-    y_pred = get_estimator(estimator).fit(filtered_data, target).predict(filtered_data)
 
+    if data_test is None:
+        data_test = data_training
+    if target_test is None:
+        target_test = target_training
+
+
+    selected_features = list(compress(data_training.columns, mask))
+    filtered_data_training = data_training[selected_features]
+    filtered_data_test = data_test[selected_features]
+    y_pred = get_estimator(estimator).fit(filtered_data_training, target_training).predict(filtered_data_test)
+    
     # regression metrics
     if metric == "r2":
-        score = r2_score(y_true=target, y_pred=y_pred)
+        score = r2_score(y_true=target_test, y_pred=y_pred)
     elif metric == "explained_variance":
-        score = explained_variance_score(y_true=target, y_pred=y_pred)
+        score = explained_variance_score(y_true=target_test, y_pred=y_pred)
     # classification metrics
     elif metric == "accuracy":
-        score = accuracy_score(y_true=target, y_pred=y_pred)
+        score = accuracy_score(y_true=target_test, y_pred=y_pred)
     else:
         raise ValueError("Invalid metric")
 
@@ -78,6 +87,8 @@ def get_estimator(estimator):
         return svm.LinearSVC(dual=False, max_iter=1000) 
     elif estimator == "k_neighbours_classifier":
         return KNeighborsClassifier(n_neighbors=5)
+    elif estimator == "random_forest":
+        return RandomForestClassifier()
     else:
         raise ValueError("Invalid estimator.")
 
