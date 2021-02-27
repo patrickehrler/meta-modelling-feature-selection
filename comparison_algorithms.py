@@ -1,5 +1,6 @@
+from bayesian_algorithms import discretize
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
-from sklearn.feature_selection import RFE, SelectFromModel, VarianceThreshold, SelectKBest
+from sklearn.feature_selection import RFE, SelectFromModel, VarianceThreshold, SelectKBest, f_classif, mutual_info_classif
 from utils import convert_vector, get_estimator
 import numpy as np
 
@@ -23,7 +24,7 @@ def sfs(data, target, n_features=None, estimator="linear_regression", metric=Non
     sfs_selection = SFS(get_estimator(estimator),
                         k_features=n_features,
                         forward=True,
-                        verbose=0,
+                        verbose=2,
                         cv=0,  # disable cross validation
                         scoring=metric
                         )
@@ -49,7 +50,8 @@ def rfe(data, target, n_features=10, estimator="linear_regression"):
 
     """
     rfe_selection = RFE(estimator=get_estimator(estimator),
-                        n_features_to_select=n_features
+                        n_features_to_select=n_features,
+                        verbose=2
                         )
 
     rfe_selection.fit(data, target)
@@ -108,8 +110,26 @@ def skb(data, target, n_features, estimator=None):
 
     """
     # TODO: try different score_func (chi2)
-    skb_selection = SelectKBest(k=n_features).fit(data, target)
+    skb_selection = SelectKBest(score_func=f_classif, k=n_features).fit(data, target)
 
     result_vector = convert_vector(skb_selection.get_support())
+
+    return result_vector
+
+def mutual(data, target, n_features, estimator=None):
+    """ Calculate mutual score for each feature, then select n highest features.
+
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to select
+    estimator -- ignored (only for compatibility)
+
+    """
+
+    mutual_selection = mutual_info_classif(data, target)
+
+    # select n features with highest mutual score
+    result_vector = discretize(mutual_selection, "n_highest", n_features)
 
     return result_vector

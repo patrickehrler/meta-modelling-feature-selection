@@ -1,14 +1,14 @@
 from bayesian_algorithms import skopt
-from comparison_algorithms import rfe, sfs, sfm, vt, skb
+from comparison_algorithms import rfe, sfs, sfm, vt, skb, mutual
 
 # Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
 classification_estimators = {
     "svc_linear": {
         "accuracy": "Support Vector Classification - Accuracy Score"
+    },
+    "k_neighbours_classifier": { # results in error message
+        "accuracy": "k Neighbours Classification - Accuracy Score"
     }
-    # "k_neighbours_classifier": { # results in error message
-    #    "accuracy": "k Neighbours Classification - Accuracy Score"
-    # }
 }
 regression_estimators = {
     "linear_regression": {
@@ -57,7 +57,8 @@ comparison_parameters = ["Approach", "Algorithm", "n_features"]
 comparison_approaches = {
     "filter": {
         vt: "Variance Threshold",
-        skb: "SelectKBest"
+        skb: "SelectKBest",
+        mutual: "Highest mutual score"
     },
     "wrapper": {
         # sfs: "Sequential Feature Selection" # bad performance when many features
