@@ -13,8 +13,10 @@ max_calls = 200
 # number of processes for parallelization
 n_processes = 4
 
-# number of splits for cross-validation
+# number of splits for cross-validation (outside)
 n_splits = 2
+# number of cross-validation splits inside of bayesian optimization
+n_splits_bay_opt = 2
 
 # number of features to be selected
 min_nr_features = 20
