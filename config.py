@@ -19,7 +19,7 @@ n_splits = 2
 n_splits_bay_opt = 2
 
 # number of features to be selected
-min_nr_features = 20
+min_nr_features = 5
 max_nr_features = 20
 iter_step_nr_features = 5
 
@@ -27,8 +27,9 @@ iter_step_nr_features = 5
 data_ids = {
     "classification": {
         # experiment datasets
+        1233: False,
         1039: False,
-        1128: True,
+        1128: False,
         1130: False,
         1134: False,
         1137: False,

@@ -42,7 +42,7 @@ def init_progress_bar():
                                        ) + (number_datasets_regression * number_regression_estimators)) * config.n_splits
 
     # calculate number of bayesian approaches
-    number_of_bayesian = (len(approaches.bayesian_approaches) * len(approaches.discretization_methods) * len(approaches.acquisition_functions)) * (
+    number_of_bayesian = (len(approaches.discretization_methods) * len(approaches.acquisition_functions)) * (
         (len(approaches.learning_methods)-1) + len(approaches.kernels))  # only gaussian processes use kernels
 
     # calculate number of comparison approaches
@@ -51,8 +51,11 @@ def init_progress_bar():
         for _, _ in approach.items():
             number_of_comparison += 1
 
+    # calculate number of runs with different number of features
+    feature_runs = (config.max_nr_features-config.min_nr_features) / config.iter_step_nr_features + 1
+
     # calculate total progress bar steps
-    progress_total = number_datasets_and_estimators * \
+    progress_total = feature_runs * number_datasets_and_estimators * \
         (number_of_bayesian + number_of_comparison)
     pbar = tqdm(total=progress_total)
     pbar.set_description("Processed")
@@ -97,6 +100,7 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                                               kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt)
                                 df_results.loc[len(df_results)] = [
                                        algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                queue.put(1)  # increase progress bar
                                 """if discr == "round":
                                     # run "round" without a predifined number of features
                                     vector, score = algo(data=data_training, target=target_training, learning_method=learn,
@@ -108,7 +112,7 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                                           kernel=kernel, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt)
                             df_results.loc[len(df_results)] = [
                                 algo_descr, learn_descr, kernel_descr, discr_descr, acq, "-", vector, score]
-                        queue.put(1)  # increase progress bar
+                            queue.put(1)  # increase progress bar
                 else:
                     # use only skopt for learning methods other than GP
                     algo = skopt
@@ -121,6 +125,7 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                                           discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls, cross_validation=config.n_splits_bay_opt)
                             df_results.loc[len(df_results)] = [
                                 algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
+                            queue.put(1)  # increase progress bar
                             """if discr == "round":
                                     # run "round" without a predifined number of features
                                     vector, score = algo(data=data_training, target=target_training, learning_method=learn,
@@ -132,8 +137,7 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                             data=data_training, target=target_training, learning_method=learn, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt)
                         df_results.loc[len(df_results)] = [
                             algo_descr, learn_descr, "-", discr_descr, acq, "-", vector, score]
-
-                    queue.put(1)  # increase progress bar
+                        queue.put(1)  # increase progress bar
     # generate test scores
     df_results_with_test_scores = add_testing_score(
         data_training, data_test, target_training, target_test, df_results, estimator, metric)
@@ -161,7 +165,7 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
         for algo, algo_descr in approach_descr.items():
             if (algo == rfe or algo == sfm or algo == sfs) and estimator == "k_neighbours_classifier":
                 # k nearest neighbors does not support weights (needed for some wrapper and embedded approaches)
-                break
+                queue.put(1)  # increase progress bar
             else:
                 for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                     vector = algo(data=data_training, target=target_training,
@@ -170,7 +174,7 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
                                       estimator, metric)
                     df_results.loc[len(df_results)] = [
                         approach, algo_descr, n_features, vector, score]
-            queue.put(1)  # increase progress bar
+                    queue.put(1)  # increase progress bar
 
     # generate test scores
     df_results_with_test_scores = add_testing_score(
@@ -282,7 +286,7 @@ def experiment_all_datasets_and_estimators():
     proc.join()
 
 
-#experiment_all_datasets_and_estimators()
+experiment_all_datasets_and_estimators()
 
 
 def debug():
@@ -305,4 +309,4 @@ def debug():
     # print(sett)
 
 
-debug()
+#debug()

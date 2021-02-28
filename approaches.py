@@ -33,7 +33,7 @@ bayesian_approaches = {
 }
 learning_methods = {
     "GP": "Gaussian Process",
-    #"RF": "Random Forest",
+    "RF": "Random Forest",
     #"ET": "Extra Trees",
     #"GBRT": "Gradient Boosting Quantile"
 }
