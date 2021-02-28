@@ -33,22 +33,26 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     noise -- 
 
     """
-    
+    print("skopt start")
     # define black box function
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
         mask = discretize(args[0], discretization_method, n_features)
 
-        if cross_validation != 0:
+        if cross_validation > 1:
+            # perform cross validation
             kf = KFold(n_splits=cross_validation, shuffle=True).split(data)
             score_list = []
-            for train_index, _ in kf:
+            for train_index, test_index in kf:
                 # get score from estimator
-                score_list.append(1 - get_score(data.loc[train_index], target.loc[train_index], mask, estimator, metric))
+                score_list.append(1 - get_score(data.iloc[train_index], data.iloc[test_index], target.iloc[train_index], target.iloc[test_index], mask, estimator, metric))
+            # calculate average validation score
             score = sum(score_list) / len(score_list)
+        elif cross_validation == 0 or cross_validation == 1:
+            # no cross validation
+            score = 1 - get_score(data, data, target, target, mask, estimator, metric)
         else:
-            # get score from estimator
-            score = 1 - get_score(data, target, mask, estimator, metric)
+            raise ValueError("Undefined cross-validation value.")
 
         return score
 
@@ -125,7 +129,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         result_fun_set = list(map(lambda x: 1-x, optimizer.func_vals))
         return result_vector, result_vector_set, result_fun_set
     else:
-        return result_vector
+        return result_vector, 1 - optimizer.fun
 
 
 def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="svc_linear", metric="accuracy", acq_func="PI", n_calls=15, intermediate_results=False, cross_validation=0, n_random_starts=5, random_state=123):
@@ -147,22 +151,26 @@ def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", dis
     noise -- 
 
     """
-
+    print("gpyopt start")
     # define black box function
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
         mask = discretize(args[0][0], discretization_method, n_features)
     
-        if cross_validation != 0:
+        if cross_validation > 1:
+            # perform cross validation
             kf = KFold(n_splits=cross_validation, shuffle=True).split(data)
             score_list = []
-            for train_index, _ in kf:
+            for train_index, test_index in kf:
                 # get score from estimator
-                score_list.append(get_score(data.iloc[train_index], target.iloc[train_index], mask, estimator, metric))
+                score_list.append(get_score(data.iloc[train_index], data.iloc[test_index], target.iloc[train_index], target.iloc[test_index], mask, estimator, metric))
+            # calculate average validation score
             score = sum(score_list) / len(score_list)
+        elif cross_validation == 0 or cross_validation == 1:
+            # no cross validation
+            score = get_score(data, data, target, target, mask, estimator, metric)
         else:
-            # get score from estimator
-            score = get_score(data, target, mask, estimator, metric)
+            raise ValueError("Undefined cross-validation value.")
 
         return score
     
@@ -239,7 +247,7 @@ def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", dis
 
         return result_vector, result_vector_set, result_fun_set
     else:
-        return result_vector
+        return result_vector, optimizer.fx_opt
 
 
 

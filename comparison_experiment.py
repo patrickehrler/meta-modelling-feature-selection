@@ -1,5 +1,5 @@
 from bayesian_algorithms import skopt, discretize, gpyopt
-from comparison_algorithms import rfe, sfs, sfm, vt, skb
+from comparison_algorithms import rfe, sfs, sfm, n_best_anova_f, n_best_mutual, n_best_pearsonr
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
 from tqdm import tqdm
@@ -76,67 +76,68 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
     # Define result dataframes
     df_results = pd.DataFrame(
         columns=approaches.bay_opt_parameters+["Vector", "Training Score"])
-    for algo, algo_descr in approaches.bayesian_approaches.items():
-        for learn, learn_descr in approaches.learning_methods.items():
-            for discr, discr_descr in approaches.discretization_methods.items():
-                for acq, _ in approaches.acquisition_functions.items():
-                    if learn == "GP":
-                        for kernel, kernel_descr in approaches.kernels.items():
-                            vector = []
-                            if discr == "n_highest" or discr == "round":
-                                for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                    vector = algo(data=data_training, target=target_training, learning_method=learn,
-                                              kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
-                                    score = get_score(
-                                        data_training, target_training, vector, estimator, metric)
-                                    df_results.loc[len(df_results)] = [
-                                        algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
-                                    if discr == "round":
-                                        # run "round" without a predifined number of features
-                                        vector = algo(data=data_training, target=target_training, learning_method=learn,
-                                              kernel=kernel, discretization_method=discr, n_features=None, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
-                                        score = get_score(
-                                            data_training, target_training, vector, estimator, metric)
-                                        df_results.loc[len(df_results)] = [
-                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, "-", vector, score]
-                            else:
-                                vector = algo(data=data_training, target=target_training, learning_method=learn,
-                                              kernel=kernel, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
-                                score = get_score(
-                                    data_training, target_training, vector, estimator, metric)
-                                df_results.loc[len(df_results)] = [
-                                    algo_descr, learn_descr, kernel_descr, discr_descr, acq, "-", vector, score]
-                            queue.put(1)  # increase progress bar
-                    else:
-                        vector = []
-                        if discr == "n_highest" or "round":
-                            for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                vector = algo(data=data_training, target=target_training, learning_method=learn,
-                                              discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls)
-                                score = get_score(data_training, target_training, vector,
-                                          estimator, metric)
-                                df_results.loc[len(df_results)] = [
-                                        algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
-                                if discr == "round":
-                                    # run "round" without a predifined number of features
-                                    vector = algo(data=data_training, target=target_training, learning_method=learn,
-                                              discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=None, n_calls=n_calls)
-                                    score = get_score(data_training, target_training, vector,
-                                          estimator, metric)
-                                    df_results.loc[len(df_results)] = [
-                                        algo_descr, learn_descr, "-", discr_descr, acq, "-", vector, score]
+
+    for learn, learn_descr in approaches.learning_methods.items():
+        for discr, discr_descr in approaches.discretization_methods.items():
+            for acq, _ in approaches.acquisition_functions.items():
+                if learn == "GP":
+                    for kernel, kernel_descr in approaches.kernels.items():
+                        # use mainly gpyopt, only with hamming kernel gpyopt
+                        if kernel == "HAMMING":
+                            algo = skopt
+                            algo_descr = "scikit-optimize"
                         else:
-                            vector = algo(
-                                data=data_training, target=target_training, learning_method=learn, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
-                            score = get_score(data_training, target_training, vector,
-                                          estimator, metric)
+                            algo = gpyopt
+                            algo_descr = "gpyopt"
+
+                        vector = []
+                        if discr == "n_highest" or discr == "round":
+                            for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
+                                vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                              kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
+                                df_results.loc[len(df_results)] = [
+                                       algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                """if discr == "round":
+                                    # run "round" without a predifined number of features
+                                    vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                                  kernel=kernel, discretization_method=discr, n_features=None, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
+                                    df_results.loc[len(df_results)] = [
+                                        algo_descr, learn_descr, kernel_descr, discr_descr, acq, "-", vector, score]"""
+                        else:
+                            vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                          kernel=kernel, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
                             df_results.loc[len(df_results)] = [
-                                    algo_descr, learn_descr, "-", discr_descr, acq, "-", vector, score]
-                        
+                                algo_descr, learn_descr, kernel_descr, discr_descr, acq, "-", vector, score]
                         queue.put(1)  # increase progress bar
+                else:
+                    # use only skopt for learning methods other than GP
+                    algo = skopt
+                    algo_descr = "scikit-optimize"
+
+                    vector = []
+                    if discr == "n_highest" or "round":
+                        for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
+                            vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                          discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls)
+                            df_results.loc[len(df_results)] = [
+                                algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
+                            """if discr == "round":
+                                    # run "round" without a predifined number of features
+                                    vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                                  discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=None, n_calls=n_calls)
+                                    df_results.loc[len(df_results)] = [
+                                        algo_descr, learn_descr, "-", discr_descr, acq, "-", vector, score]"""
+                    else:
+                        vector, score = algo(
+                            data=data_training, target=target_training, learning_method=learn, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
+                        df_results.loc[len(df_results)] = [
+                            algo_descr, learn_descr, "-", discr_descr, acq, "-", vector, score]
+
+                    queue.put(1)  # increase progress bar
     # generate test scores
     df_results_with_test_scores = add_testing_score(
-        data_test, target_test, df_results, estimator, metric)
+        data_training, data_test, target_training, target_test, df_results, estimator, metric)
+
     return df_results_with_test_scores
 
 
@@ -158,17 +159,14 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
         columns=approaches.comparison_parameters+["Vector", "Training Score"])
     for approach, approach_descr in approaches.comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
-            if algo == vt:
-                vector = algo(data=data_training, target=target_training)
-                score = get_score(data_training, target_training, vector,
-                                  estimator, metric)
-                df_results.loc[len(df_results)] = [
-                    approach, algo_descr, "-", vector, score]
+            if (algo == rfe or algo == sfm or algo == sfs) and estimator == "k_neighbours_classifier":
+                # k nearest neighbors does not support weights (needed for some wrapper and embedded approaches)
+                break
             else:
                 for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                     vector = algo(data=data_training, target=target_training,
                                   n_features=n_features, estimator=estimator)
-                    score = get_score(data_training, target_training, vector,
+                    score = get_score(data_training, data_training, target_training, target_training, vector,
                                       estimator, metric)
                     df_results.loc[len(df_results)] = [
                         approach, algo_descr, n_features, vector, score]
@@ -176,7 +174,7 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
 
     # generate test scores
     df_results_with_test_scores = add_testing_score(
-        data_test, target_test, df_results, estimator, metric)
+        data_training, data_test, target_training, target_test, df_results, estimator, metric)
 
     return df_results_with_test_scores
 
@@ -269,6 +267,7 @@ def experiment_all_datasets_and_estimators():
                     estimators = approaches.classification_estimators
                 else:
                     estimators = approaches.regression_estimators
+
                 for estimator, metrics in estimators.items():
                     for metric, _ in metrics.items():
                         bayesian, comparison = __run_all_bayesian_comparison(
@@ -282,23 +281,28 @@ def experiment_all_datasets_and_estimators():
     queue.put(None)
     proc.join()
 
+
 #experiment_all_datasets_and_estimators()
 
 
 def debug():
     data, target = fetch_openml(
-        data_id=1510, return_X_y=True, as_frame=True)
+        data_id=1137, return_X_y=True, as_frame=True)
     print("Downloaded")
     #
-    #vector1,x,y = skopt(data, target, estimator="svc_linear", metric="accuracy", n_calls=6, n_features=5, learning_method = "GP", kernel="RBF", discretization_method="round", acq_func="PI", intermediate_results=True)
-    vector1, x, y = gpyopt(data, target, discretization_method="round", n_features=None, estimator="svc_linear", cross_validation=0, metric="accuracy", learning_method="GP", kernel="MATERN", n_calls=5, intermediate_results=True)
+    #vector1,x,y = skopt(data, target, estimator="svc_linear", metric="accuracy", n_calls=20, n_features=10, learning_method = "RF", discretization_method="binary", acq_func="PI", intermediate_results=True)
+    #vector1, x = skopt(data, target, discretization_method="round", n_features=5, estimator="k_neighbours_classifier", cross_validation=2,
+    #                      metric="accuracy", learning_method="GP", kernel="MATERN", acq_func="PI", n_calls=10, intermediate_results=False)
+    vector1 = sfs(data, target, n_features=1, estimator="svc_linear")
     print(vector1)
-    print(x)
-    #print(y)
-    #print(sum(vector1))
-    #print(get_score(data, target, vector1, "svc_linear", "accuracy"))
-    #print(sett)
+    #print(x)
+    # print(y)
+    # print(sum(vector1))
+    #kf = KFold(n_splits=5, shuffle=True).split(data)
+    #for train_index, test_index in kf:
+    #    print(get_score(data_training=data.loc[train_index], data_test=data.loc[test_index], target_training=target.loc[train_index], target_test=target.loc[test_index], mask=[
+    #          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], estimator="random_forest", metric="accuracy"))
+    # print(sett)
 
 
 debug()
-# TODO Question: Why does RBF kernel work with binary search space? -> Transformation wie in Fundamentals??

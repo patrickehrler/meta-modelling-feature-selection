@@ -18,6 +18,7 @@ def sfs(data, target, n_features=None, estimator="linear_regression", metric=Non
     metric -- metric used to calculate score
 
     """
+    print("sfs start")
     if n_features is None:
         n_features = "best"
 
@@ -25,8 +26,8 @@ def sfs(data, target, n_features=None, estimator="linear_regression", metric=Non
     sfs_selection = SFS(get_estimator(estimator),
                         k_features=n_features,
                         forward=True,
-                        verbose=2,
-                        cv=0,  # disable cross validation
+                        verbose=0,
+                        cv=2,  # disable cross validation
                         scoring=metric
                         )
     sfs_selection.fit(data, target)
@@ -50,9 +51,10 @@ def rfe(data, target, n_features=10, estimator="linear_regression"):
     estimator -- estimator used to determine score
 
     """
+    print("rfe start")
     rfe_selection = RFE(estimator=get_estimator(estimator),
                         n_features_to_select=n_features,
-                        verbose=2
+                        verbose=0
                         )
 
     rfe_selection.fit(data, target)
@@ -74,6 +76,7 @@ def sfm(data, target, n_features=None, estimator="linear_regression"):
     estimator -- estimator used to determine score
 
     """
+    print("sfm start")
     sfm_selection = SelectFromModel(estimator=get_estimator(
         estimator), max_features=n_features, threshold=-np.inf).fit(data, target)
 
@@ -83,14 +86,15 @@ def sfm(data, target, n_features=None, estimator="linear_regression"):
     return result_vector
 
 
-def vt(data, target=None):
-    """ Run Variance Threshold feature selection. Threshhold is 0, which means only features with zero-variance are removed.
+"""def vt(data, target=None):
+     Run Variance Threshold feature selection. Threshhold is 0, which means only features with zero-variance are removed.
 
     Keyword arguments:
     data -- feature matrix
     target -- ignored (only for compatibility)
 
-    """
+    
+    print("vt start")
     # TODO: try different tresholds
     vt_selection = VarianceThreshold(threshold=0)
     vt_selection.fit(data)
@@ -98,7 +102,7 @@ def vt(data, target=None):
     result_vector = convert_vector(vt_selection.get_support())
 
     return result_vector
-
+"""
 
 def n_best_anova_f(data, target, n_features, estimator=None):
     """ Run SelectKBest feature selection.
@@ -110,6 +114,7 @@ def n_best_anova_f(data, target, n_features, estimator=None):
     estimator -- ignored (only for compatibility)
 
     """
+    print("anova start")
 
     skb_selection = SelectKBest(score_func=f_classif, k=n_features).fit(data, target)
 
@@ -127,7 +132,7 @@ def n_best_mutual(data, target, n_features, estimator=None):
     estimator -- ignored (only for compatibility)
 
     """
-
+    print("mutual start")
     mutual_selection = SelectKBest(score_func=mutual_info_classif, k=n_features).fit(data,target)
 
     # select n features with highest mutual score
@@ -145,7 +150,7 @@ def n_best_pearsonr(data, target, n_features, estimator=None):
     estimator -- ignored (only for compatibility)
 
     """
-
+    print("pearson start")
     pearson_selection = [abs(pearsonr(data.loc[:,feature], target.astype("float"))[1]) for feature in data.columns]
     result_vector = discretize(pearson_selection, "n_highest", n_features)
 

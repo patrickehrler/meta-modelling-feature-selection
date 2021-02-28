@@ -49,15 +49,15 @@ def experiment_bayesian_iter_performance():
                                                         # hamming kernel only for categorical and binary search-spaces
                                                         if discretization_method == "categorical" or discretization_method == "binary":
                                                             mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                            skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True))))
+                                                            skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 2))))
                                                     else:
                                                         mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                        gpyopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True))))
+                                                        gpyopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 2))))
                                             else:
                                                 # random forest only for categorical or binary search-spaces
                                                 if learning_method == "categorical" or learning_method == "binary":
                                                     mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True))))
+                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 2))))
 
                 # get finished tasks (display tqdm progressbar)
                 results = [tuple(r[0:9]) + tuple([r[9].get()]) for r in tqdm(mp_results)]
@@ -83,7 +83,7 @@ def experiment_bayesian_iter_performance():
                             else:
                                 max_vector = discretize(vector_list[n_calls], "n_highest", n_features)
                             # calculate test score based on vector that has max training score
-                            current_max_test_score = get_score(data.loc[test_index], target.loc[test_index], max_vector, estimator, metric)
+                            current_max_test_score = get_score(data.loc[train_index], data.loc[test_index], target.loc[train_index], target.loc[test_index], max_vector, estimator, metric)
                         df.append([dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, n_calls, current_max_training_score, current_max_test_score])
 
                 df_result = pd.DataFrame(df, columns=list_columns+["Training Score", "Testing Score"])

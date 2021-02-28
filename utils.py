@@ -53,7 +53,7 @@ def convert_vector(vector):
     return [int(x) for x in vector]
 
 
-def add_testing_score(data, target, dataframe, estimator, metric):
+def add_testing_score(data_training, data_test, target_training, target_test, dataframe, estimator, metric):
     """ Calculate score for each row in dataframe and add it as a column
 
     Keyword arguments:
@@ -66,7 +66,7 @@ def add_testing_score(data, target, dataframe, estimator, metric):
     """
     for row in dataframe.index:
         vector = dataframe.loc[row]["Vector"]
-        score = get_score(data, target, vector, estimator, metric)
+        score = get_score(data_training, data_test, target_training, target_test, vector, estimator, metric)
         dataframe.loc[row, "Testing Score"] = score
 
     return dataframe

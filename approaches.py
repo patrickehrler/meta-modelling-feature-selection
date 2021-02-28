@@ -1,5 +1,5 @@
-from bayesian_algorithms import skopt
-from comparison_algorithms import rfe, sfs, sfm, vt, n_best_anova_f, n_best_mutual, n_best_pearsonr
+from bayesian_algorithms import skopt, gpyopt
+from comparison_algorithms import rfe, sfs, sfm, n_best_anova_f, n_best_mutual, n_best_pearsonr
 
 # Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
 classification_estimators = {
@@ -28,7 +28,8 @@ regression_estimators = {
 bay_opt_parameters = ["Approach", "Learning Method",
                       "Kernel", "Discretization Method", "Acquisition Function", "n_features"]
 bayesian_approaches = {
-    skopt: "Scikit Optimize"
+    skopt: "Scikit Optimize",
+    gpyopt: "GPyOpt"
 }
 learning_methods = {
     "GP": "Gaussian Process",
@@ -39,7 +40,7 @@ learning_methods = {
 kernels = {
     # kernels for Gaussian Processes only
     "MATERN": "Matern",
-    #"HAMMING": "Hamming",
+    "HAMMING": "Hamming",
     "RBF": "Radial Basis Functions"  # squared-exponential kernel
 }
 discretization_methods = {
@@ -59,13 +60,13 @@ acquisition_functions = {
 comparison_parameters = ["Approach", "Algorithm", "n_features"]
 comparison_approaches = {
     "filter": {
-        vt: "Variance Threshold",
+        #vt: "Variance Threshold",
         n_best_anova_f: "SelectKBest",
         n_best_mutual: "Highest mutual score",
-        #n_best_pearsonr: "Highest pearson correlation" # probably not useful for classification targets
+        n_best_pearsonr: "Highest pearson correlation" # probably not useful for classification targets
     },
     "wrapper": {
-        # sfs: "Sequential Feature Selection" # bad performance when many features
+        sfs: "Sequential Feature Selection", # bad performance when many features
         rfe: "Recursive Feature Selection"
     },
     "embedded": {
