@@ -286,27 +286,21 @@ def experiment_all_datasets_and_estimators():
     proc.join()
 
 
-experiment_all_datasets_and_estimators()
+#experiment_all_datasets_and_estimators()
 
 
 def debug():
     data, target = fetch_openml(
-        data_id=1137, return_X_y=True, as_frame=True)
+        data_id=978, return_X_y=True, as_frame=True)
     print("Downloaded")
-    #
-    #vector1,x,y = skopt(data, target, estimator="svc_linear", metric="accuracy", n_calls=20, n_features=10, learning_method = "RF", discretization_method="binary", acq_func="PI", intermediate_results=True)
-    #vector1, x = skopt(data, target, discretization_method="round", n_features=5, estimator="k_neighbours_classifier", cross_validation=2,
-    #                      metric="accuracy", learning_method="GP", kernel="MATERN", acq_func="PI", n_calls=10, intermediate_results=False)
-    vector1 = sfs(data, target, n_features=1, estimator="svc_linear")
+
+    vector1 = gpyopt(data, target, estimator="svc_linear", penalty_weight=10, metric="accuracy", n_calls=30, n_features=15, learning_method = "GP", kernel="MATERN", discretization_method="round", acq_func="PI", intermediate_results=False, cross_validation=0)
     print(vector1)
-    #print(x)
-    # print(y)
-    # print(sum(vector1))
-    #kf = KFold(n_splits=5, shuffle=True).split(data)
-    #for train_index, test_index in kf:
-    #    print(get_score(data_training=data.loc[train_index], data_test=data.loc[test_index], target_training=target.loc[train_index], target_test=target.loc[test_index], mask=[
-    #          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], estimator="random_forest", metric="accuracy"))
-    # print(sett)
+
+    # cross-validated result scores
+    kf = KFold(n_splits=5, shuffle=True).split(data)
+    for train_index, test_index in kf:
+        print(get_score(data_training=data.loc[train_index], data_test=data.loc[test_index], target_training=target.loc[train_index], target_test=target.loc[test_index], mask=vector1, estimator="svc_linear", metric="accuracy"))
 
 
-#debug()
+debug()

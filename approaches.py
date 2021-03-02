@@ -6,7 +6,7 @@ classification_estimators = {
     "svc_linear": {
         "accuracy": "Support Vector Classification - Accuracy Score"
     },
-    "k_neighbours_classifier": { # results in error message
+    "k_neighbours_classifier": {
         "accuracy": "k Neighbours Classification - Accuracy Score"
     },
     "random_forest": {

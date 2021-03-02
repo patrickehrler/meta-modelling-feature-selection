@@ -12,9 +12,10 @@ import tempfile
 import pandas as pd
 import GPy
 from GPyOpt.methods import BayesianOptimization
+from skopt.plots import plot_convergence
 from numpy.random import seed
 
-def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, intermediate_results=False, cross_validation=0, n_random_starts=5, random_state=123, noise="gaussian"):
+def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, intermediate_results=False, penalty_weight=10, cross_validation=0, n_random_starts=5, random_state=123, noise="gaussian"):
     """ Run Scikit-Optimize Implementation of Bayesian Optimization (only works with Gaussian processes and Matern or RBF kernel)
 
     Keyword arguments:
@@ -28,6 +29,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     acq_func -- aquisition function to be used
     n_calls -- number of iterations
     intermediate_results -- if True a set of result vectors of each iteration step will be returned
+    penalty_weight -- weight of penalty
     n_random_starts -- number of initial random evaluations
     random_state -- seed for randomizer
     noise -- 
@@ -38,6 +40,10 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
         mask = discretize(args[0], discretization_method, n_features)
+        # calculate penalty score
+        penalty_score = abs(sum(mask)-n_features)/len(data.columns)
+        if penalty_weight < 0:
+            raise ValueError("Undefined penalty weight.")
 
         if cross_validation > 1:
             # perform cross validation
@@ -45,14 +51,19 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
             score_list = []
             for train_index, test_index in kf:
                 # get score from estimator
-                score_list.append(1 - get_score(data.iloc[train_index], data.iloc[test_index], target.iloc[train_index], target.iloc[test_index], mask, estimator, metric))
+                evaluation_score = 1-get_score(data.iloc[train_index], data.iloc[test_index], target.iloc[train_index], target.iloc[test_index], mask, estimator, metric)
+                score_list.append((evaluation_score) + penalty_weight * penalty_score)
             # calculate average validation score
             score = sum(score_list) / len(score_list)
         elif cross_validation == 0 or cross_validation == 1:
             # no cross validation
-            score = 1 - get_score(data, data, target, target, mask, estimator, metric)
+            evaluation_score = 1-get_score(data, data, target, target, mask, estimator, metric)
+            score = (evaluation_score) + penalty_weight * penalty_score # minimize scores
         else:
             raise ValueError("Undefined cross-validation value.")
+
+        print(score)
+        print(sum(mask))
 
         return score
 
@@ -110,14 +121,21 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         base_estimator=base_estimator,
         dimensions=space,      # the bounds on each dimension of x
         acq_func=acq_func,      # the acquisition function
-        acq_optimizer="auto",   # configured on the basis of the space searched over
+        acq_optimizer="sampling",   # configured on the basis of the space searched over
         n_calls=n_calls,         # the number of evaluations of f
-        n_random_starts=n_random_starts,  # the number of random initialization points
+        n_initial_points=n_random_starts,  # the number of random initialization points
         random_state=random_state,  # the random seed
-        verbose=False
+        initial_point_generator="random",
+        kappa=10000, # do more exploration (LCB)
+        xi=10000, # do more exploration (PI, EI)
+        n_points=10000, # number of points evaluated of the acquisition function per iteration (reduce number for better performance)
+        verbose=True
     )
 
-    if (discretization_method == "round" or discretization_method == "binary" or discretization_method == "categorical") and n_features is not None:
+    plot_convergence(optimizer).figure.savefig("convergence.png")
+    print(optimizer.models)
+
+    if (discretization_method == "round" or discretization_method == "probabilistic_round" or discretization_method == "binary" or discretization_method == "categorical") and n_features is not None:
         # to limit the number of selected features on "round" we use the n highest features after the last bayesian iteration step
         result_vector = discretize(optimizer.x, "n_highest", n_features)
     else:
@@ -132,7 +150,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         return result_vector, 1 - optimizer.fun
 
 
-def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="svc_linear", metric="accuracy", acq_func="PI", n_calls=15, intermediate_results=False, cross_validation=0, n_random_starts=5, random_state=123):
+def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="svc_linear", metric="accuracy", acq_func="PI", n_calls=15, intermediate_results=False, penalty_weight=10, cross_validation=0, n_random_starts=5, random_state=123):
     """ Run Scikit-Optimize Implementation of Bayesian Optimization
 
     Keyword arguments:
@@ -146,6 +164,7 @@ def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", dis
     acq_func -- aquisition function to be used
     n_calls -- number of iterations
     intermediate_results -- if True a set of result vectors of each iteration step will be returned
+    penalty_weight -- weight of penalty
     n_random_starts -- number of initial random evaluations
     random_state -- seed for randomizer
     noise -- 
@@ -156,6 +175,9 @@ def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", dis
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
         mask = discretize(args[0][0], discretization_method, n_features)
+        penalty_score = abs(sum(mask)-n_features)/len(data.columns)
+        if penalty_weight < 0:
+            raise ValueError("Undefined penalty weight.")
     
         if cross_validation > 1:
             # perform cross validation
@@ -163,15 +185,19 @@ def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", dis
             score_list = []
             for train_index, test_index in kf:
                 # get score from estimator
-                score_list.append(get_score(data.iloc[train_index], data.iloc[test_index], target.iloc[train_index], target.iloc[test_index], mask, estimator, metric))
+                evaluation_score = get_score(data.iloc[train_index], data.iloc[test_index], target.iloc[train_index], target.iloc[test_index], mask, estimator, metric)
+                score_list.append((evaluation_score) - penalty_weight * penalty_score) 
             # calculate average validation score
             score = sum(score_list) / len(score_list)
         elif cross_validation == 0 or cross_validation == 1:
             # no cross validation
-            score = get_score(data, data, target, target, mask, estimator, metric)
+            evaluation_score = get_score(data, data, target, target, mask, estimator, metric)
+            score = (evaluation_score) - penalty_weight * penalty_score
         else:
             raise ValueError("Undefined cross-validation value.")
-
+        
+        print(score)
+        print(sum(mask))
         return score
     
     # cast acquisition function (to get the same interface as with skopt)
@@ -226,9 +252,9 @@ def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", dis
                                         initial_design_numdata=n_random_starts,
                                         random_state=123
                                         )
-    optimizer.run_optimization(max_iter=n_calls, verbosity=False)
+    optimizer.run_optimization(max_iter=n_calls, verbosity=True)
 
-    if (discretization_method == "round" or discretization_method == "binary" or discretization_method == "categorical") and n_features is not None:
+    if (discretization_method == "binary" or discretization_method == "round" or discretization_method == "probabilistic_round" or discretization_method == "categorical") and n_features is not None:
         # to limit the number of selected features on "round" we use the n highest features after the last bayesian iteration step
         result_vector = discretize(optimizer.x_opt, "n_highest", n_features)
     else:
