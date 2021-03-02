@@ -4,6 +4,8 @@ from sklearn.feature_selection import RFE, SelectFromModel, VarianceThreshold, S
 from utils import convert_vector, get_estimator
 import numpy as np
 from scipy.stats import pearsonr
+import pymrmr
+import pandas as pd
 
 
 def sfs(data, target, n_features=None, estimator="linear_regression", metric=None):
@@ -153,5 +155,20 @@ def n_best_pearsonr(data, target, n_features, estimator=None):
     print("pearson start")
     pearson_selection = [abs(pearsonr(data.loc[:,feature], target.astype("float"))[1]) for feature in data.columns]
     result_vector = discretize(pearson_selection, "n_highest", n_features)
+
+    return result_vector
+
+def pymrmr_fs(data, target, n_features, estimator=None):
+    # discretize data to integers
+    target_data = pd.concat([target, data], axis=1)
+    target_data = target_data.apply(lambda x: pd.factorize(x)[0])
+
+    result = pymrmr.mRMR(target_data, 'MID', n_features)
+
+    # convert feature names to 0/1 vector
+    result_vector = [0 for _ in data.columns]
+    for i in range(0,len(result_vector)):
+        if data.columns[i] in result:
+            result_vector[i] = 1
 
     return result_vector

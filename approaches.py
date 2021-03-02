@@ -1,5 +1,5 @@
 from bayesian_algorithms import skopt, gpyopt
-from comparison_algorithms import rfe, sfs, sfm, n_best_anova_f, n_best_mutual, n_best_pearsonr
+from comparison_algorithms import rfe, sfs, sfm, n_best_anova_f, n_best_mutual, n_best_pearsonr, pymrmr_fs
 
 # Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
 classification_estimators = {
@@ -63,7 +63,8 @@ comparison_approaches = {
         #vt: "Variance Threshold",
         n_best_anova_f: "SelectKBest",
         n_best_mutual: "Highest mutual score",
-        n_best_pearsonr: "Highest pearson correlation" # probably not useful for classification targets
+        n_best_pearsonr: "Highest pearson correlation", # probably not useful for classification targets
+        pymrmr_fs: "mRMR"
     },
     "wrapper": {
         sfs: "Sequential Feature Selection", # bad performance when many features
