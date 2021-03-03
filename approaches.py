@@ -11,6 +11,9 @@ classification_estimators = {
     },
     "random_forest": {
         "accuracy": "Random Forest - Accuracy Score"
+    },
+    "logistic_regression": {
+        "accuracy": "Logistic Regression Classifier - Accuracy Score"
     }
 }
 regression_estimators = {

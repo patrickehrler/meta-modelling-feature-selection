@@ -6,6 +6,8 @@ import numpy as np
 from scipy.stats import pearsonr
 import pymrmr
 import pandas as pd
+import pyswarms as ps
+import pandas as pd
 
 
 def sfs(data, target, n_features=None, estimator="linear_regression", metric=None):
@@ -163,12 +165,61 @@ def pymrmr_fs(data, target, n_features, estimator=None):
     target_data = pd.concat([target, data], axis=1)
     target_data = target_data.apply(lambda x: pd.factorize(x)[0])
 
-    result = pymrmr.mRMR(target_data, 'MID', n_features)
+    result = pymrmr.mRMR(target_data, 'MIQ', n_features)
 
     # convert feature names to 0/1 vector
     result_vector = [0 for _ in data.columns]
     for i in range(0,len(result_vector)):
         if data.columns[i] in result:
             result_vector[i] = 1
+
+    return result_vector
+
+def binary_swarm(data, target, n_features, estimator=None):
+    """ Binary Particle Swarm optimization
+        Source: https://pyswarms.readthedocs.io/en/development/examples/feature_subset_selection.html
+
+        Keyword arguments:
+        data -- feature matrix
+        target -- regression or classification targets
+        n_features -- number of features to select
+        estimator -- estimator used to determine score
+    """
+
+    # TODO: include number of desired features
+
+    estimator = get_estimator(estimator)
+    total_features = len(data.columns)
+    # Define objective function
+    def f_per_particle(mask, alpha):
+        # Get the subset of the features from the binary mask
+        if np.count_nonzero(mask) == 0:
+            X_subset = data.values
+        else:
+            X_subset = data.values[:,mask==1]
+        # Perform classification and store performance in P
+        estimator.fit(X_subset, target)
+        P = (estimator.predict(X_subset) == target).mean()
+        # Compute for the objective function
+        j = (alpha * (1.0 - P)
+            + (1.0 - alpha) * (1 - (X_subset.shape[1] / total_features)))
+
+        return j
+    
+    def f(x, alpha=0.88):
+        n_particles = x.shape[0]
+        j = [f_per_particle(x[i], alpha) for i in range(n_particles)]
+
+        return np.array(j)
+    
+    # Call instance of PSO
+    options = {'c1': 0.5, 'c2': 0.5, 'w':0.9, 'k': 30, 'p':2}
+    dimensions = total_features # dimensions should be the number of features
+    optimizer = ps.discrete.BinaryPSO(n_particles=30, dimensions=dimensions, options=options)
+
+    # Perform optimization
+    _, pos = optimizer.optimize(f, iters=100, verbose=2)
+
+    result_vector = convert_vector(pos)
 
     return result_vector

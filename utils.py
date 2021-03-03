@@ -1,6 +1,6 @@
 from itertools import compress
 from sklearn import svm
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import r2_score, explained_variance_score, accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -89,6 +89,8 @@ def get_estimator(estimator):
         return KNeighborsClassifier(n_neighbors=5)
     elif estimator == "random_forest":
         return RandomForestClassifier()
+    elif estimator == "logistic_regression":
+        return LogisticRegression()
     else:
         raise ValueError("Invalid estimator.")
 
