@@ -5,13 +5,13 @@
 # Experiment-specific properties
 # 1. Comparison experiment
 # 1.1 Bayesian optimization max iterations
-n_calls = 50
+n_calls = 10
 # 2. Iteration Experiment
 # 2.1 Maximum number of iterations
 max_calls = 200
 
 # number of processes for parallelization
-n_processes = 4
+n_processes = 1
 
 # number of splits for cross-validation (outside)
 n_splits = 2
@@ -20,7 +20,7 @@ n_splits_bay_opt = 2
 
 # number of features to be selected
 min_nr_features = 5
-max_nr_features = 20
+max_nr_features = 10
 iter_step_nr_features = 5
 
 # openml.org dataset id 

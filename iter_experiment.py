@@ -1,12 +1,12 @@
-from sklearn.datasets import fetch_openml
 from bayesian_algorithms import skopt, discretize, gpyopt
-import pandas as pd
+from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
 from tqdm import tqdm
 from utils import get_score
+import approaches
 import config
 import multiprocessing as mp
-import approaches
+import pandas as pd
 
 def experiment_bayesian_iter_performance():
     """ Runs bayesian optimization to compare the performance depending on the iteration steps for all datasets/estimators/metrics.
@@ -52,7 +52,7 @@ def experiment_bayesian_iter_performance():
                                                             skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, config.n_splits_bay_opt))))
                                                     else:
                                                         mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                        gpyopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, config.n_splits_bay_opt))))
+                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, config.n_splits_bay_opt))))
                                             else:
                                                 # random forest only for categorical or binary search-spaces
                                                 if learning_method == "categorical" or learning_method == "binary":

@@ -1,17 +1,15 @@
-from bayesian_algorithms import skopt, discretize, gpyopt
-from comparison_algorithms import rfe, sfs, sfm, n_best_anova_f, n_best_mutual, n_best_pearsonr
+from comparison_algorithms import rfe, sfs, sfm
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
 from tqdm import tqdm
 from utils import get_score, add_testing_score
+import approaches
 import config
 import multiprocessing as mp
 import pandas as pd
-import approaches
-
 
 def init_progress_bar():
-    """ Initialize progress bar (one step for each execution of a comparison or bayesian approach).
+    """ Initialize progress bar (calculate number of steps).
 
     """
     # calculate number of datasets
@@ -52,7 +50,8 @@ def init_progress_bar():
             number_of_comparison += 1
 
     # calculate number of runs with different number of features
-    feature_runs = (config.max_nr_features-config.min_nr_features) / config.iter_step_nr_features + 1
+    feature_runs = (config.max_nr_features-config.min_nr_features) / \
+        config.iter_step_nr_features + 1
 
     # calculate total progress bar steps
     progress_total = feature_runs * number_datasets_and_estimators * \
@@ -73,71 +72,39 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
     target_test -- target vector of test data
     estimator -- estimator used to predict target-values
     metric -- metric used to calculate score
+    n_calls -- number of iterations in bayesian optimization
     queue -- queue to synchronize progress bar
 
     """
     # Define result dataframes
     df_results = pd.DataFrame(
         columns=approaches.bay_opt_parameters+["Vector", "Training Score"])
-
-    for learn, learn_descr in approaches.learning_methods.items():
-        for discr, discr_descr in approaches.discretization_methods.items():
-            for acq, _ in approaches.acquisition_functions.items():
-                if learn == "GP":
-                    for kernel, kernel_descr in approaches.kernels.items():
-                        # use mainly gpyopt, only with hamming kernel gpyopt
-                        if kernel == "HAMMING":
-                            algo = skopt
-                            algo_descr = "scikit-optimize"
-                        else:
-                            algo = gpyopt
-                            algo_descr = "gpyopt"
-
-                        vector = []
-                        if discr == "n_highest" or discr == "round":
+    for algo, algo_descr in approaches.bayesian_approaches.items():
+        for learn, learn_descr in approaches.learning_methods.items():
+            for discr, discr_descr in approaches.discretization_methods.items():
+                if discr == "binary" or discr == "categorical":
+                    # always sample points with excact n_features selected features
+                    acq_optimizer = "n_sampling"
+                else:
+                    acq_optimizer = "sampling"
+                for acq, _ in approaches.acquisition_functions.items():
+                    if learn == "GP":
+                        # kernels only apply for gaussian processes
+                        for kernel, kernel_descr in approaches.kernels.items():
                             for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                                 vector, score = algo(data=data_training, target=target_training, learning_method=learn,
-                                              kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt)
+                                                     kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer)
                                 df_results.loc[len(df_results)] = [
-                                       algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                    algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
                                 queue.put(1)  # increase progress bar
-                                """if discr == "round":
-                                    # run "round" without a predifined number of features
-                                    vector, score = algo(data=data_training, target=target_training, learning_method=learn,
-                                                  kernel=kernel, discretization_method=discr, n_features=None, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls)
-                                    df_results.loc[len(df_results)] = [
-                                        algo_descr, learn_descr, kernel_descr, discr_descr, acq, "-", vector, score]"""
-                        else:
-                            vector, score = algo(data=data_training, target=target_training, learning_method=learn,
-                                          kernel=kernel, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt)
-                            df_results.loc[len(df_results)] = [
-                                algo_descr, learn_descr, kernel_descr, discr_descr, acq, "-", vector, score]
-                            queue.put(1)  # increase progress bar
-                else:
-                    # use only skopt for learning methods other than GP
-                    algo = skopt
-                    algo_descr = "scikit-optimize"
-
-                    vector = []
-                    if discr == "n_highest" or "round":
+                    else:
                         for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                             vector, score = algo(data=data_training, target=target_training, learning_method=learn,
-                                          discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls, cross_validation=config.n_splits_bay_opt)
+                                                 discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer)
                             df_results.loc[len(df_results)] = [
                                 algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
                             queue.put(1)  # increase progress bar
-                            """if discr == "round":
-                                    # run "round" without a predifined number of features
-                                    vector, score = algo(data=data_training, target=target_training, learning_method=learn,
-                                                  discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=None, n_calls=n_calls)
-                                    df_results.loc[len(df_results)] = [
-                                        algo_descr, learn_descr, "-", discr_descr, acq, "-", vector, score]"""
-                    else:
-                        vector, score = algo(
-                            data=data_training, target=target_training, learning_method=learn, discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt)
-                        df_results.loc[len(df_results)] = [
-                            algo_descr, learn_descr, "-", discr_descr, acq, "-", vector, score]
-                        queue.put(1)  # increase progress bar
+            
     # generate test scores
     df_results_with_test_scores = add_testing_score(
         data_training, data_test, target_training, target_test, df_results, estimator, metric)
@@ -163,7 +130,7 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
         columns=approaches.comparison_parameters+["Vector", "Training Score"])
     for approach, approach_descr in approaches.comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
-            if (algo == rfe or algo == sfm or algo == sfs) and estimator == "k_neighbours_classifier":
+            if (algo is rfe or algo is sfm or algo is sfs) and estimator == "k_neighbours_classifier":
                 # k nearest neighbors does not support weights (needed for some wrapper and embedded approaches)
                 queue.put(1)  # increase progress bar
             else:
@@ -286,21 +253,4 @@ def experiment_all_datasets_and_estimators():
     proc.join()
 
 
-#experiment_all_datasets_and_estimators()
-
-
-def debug():
-    data, target = fetch_openml(
-        data_id=978, return_X_y=True, as_frame=True)
-    print("Downloaded")
-
-    vector1 = gpyopt(data, target, estimator="svc_linear", penalty_weight=10, metric="accuracy", n_calls=30, n_features=15, learning_method = "GP", kernel="MATERN", discretization_method="round", acq_func="PI", intermediate_results=False, cross_validation=0)
-    print(vector1)
-
-    # cross-validated result scores
-    kf = KFold(n_splits=5, shuffle=True).split(data)
-    for train_index, test_index in kf:
-        print(get_score(data_training=data.loc[train_index], data_test=data.loc[test_index], target_training=target.loc[train_index], target_test=target.loc[test_index], mask=vector1, estimator="svc_linear", metric="accuracy"))
-
-
-debug()
+experiment_all_datasets_and_estimators()

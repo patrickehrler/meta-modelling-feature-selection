@@ -1,13 +1,13 @@
 from bayesian_algorithms import discretize
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
-from sklearn.feature_selection import RFE, SelectFromModel, VarianceThreshold, SelectKBest, f_classif, mutual_info_classif
+from scipy.stats import pearsonr
+from sklearn.feature_selection import RFE, SelectFromModel, SelectKBest, f_classif, mutual_info_classif
 from utils import convert_vector, get_estimator
 import numpy as np
-from scipy.stats import pearsonr
+import pandas as pd
+import pandas as pd
 import pymrmr
-import pandas as pd
 import pyswarms as ps
-import pandas as pd
 
 
 def sfs(data, target, n_features=None, estimator="linear_regression", metric=None):
@@ -22,7 +22,6 @@ def sfs(data, target, n_features=None, estimator="linear_regression", metric=Non
     metric -- metric used to calculate score
 
     """
-    print("sfs start")
     if n_features is None:
         n_features = "best"
 
@@ -31,7 +30,7 @@ def sfs(data, target, n_features=None, estimator="linear_regression", metric=Non
                         k_features=n_features,
                         forward=True,
                         verbose=0,
-                        cv=2,  # disable cross validation
+                        cv=2,  # enable cross validation
                         scoring=metric
                         )
     sfs_selection.fit(data, target)
@@ -55,7 +54,6 @@ def rfe(data, target, n_features=10, estimator="linear_regression"):
     estimator -- estimator used to determine score
 
     """
-    print("rfe start")
     rfe_selection = RFE(estimator=get_estimator(estimator),
                         n_features_to_select=n_features,
                         verbose=0
@@ -80,7 +78,6 @@ def sfm(data, target, n_features=None, estimator="linear_regression"):
     estimator -- estimator used to determine score
 
     """
-    print("sfm start")
     sfm_selection = SelectFromModel(estimator=get_estimator(
         estimator), max_features=n_features, threshold=-np.inf).fit(data, target)
 
@@ -118,8 +115,6 @@ def n_best_anova_f(data, target, n_features, estimator=None):
     estimator -- ignored (only for compatibility)
 
     """
-    print("anova start")
-
     skb_selection = SelectKBest(score_func=f_classif, k=n_features).fit(data, target)
 
     result_vector = convert_vector(skb_selection.get_support())
@@ -136,7 +131,6 @@ def n_best_mutual(data, target, n_features, estimator=None):
     estimator -- ignored (only for compatibility)
 
     """
-    print("mutual start")
     mutual_selection = SelectKBest(score_func=mutual_info_classif, k=n_features).fit(data,target)
 
     # select n features with highest mutual score
@@ -154,13 +148,21 @@ def n_best_pearsonr(data, target, n_features, estimator=None):
     estimator -- ignored (only for compatibility)
 
     """
-    print("pearson start")
     pearson_selection = [abs(pearsonr(data.loc[:,feature], target.astype("float"))[1]) for feature in data.columns]
     result_vector = discretize(pearson_selection, "n_highest", n_features)
 
     return result_vector
 
 def pymrmr_fs(data, target, n_features, estimator=None):
+    """ Minimum redundancy feature selection
+
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to select
+    estimator -- ignored (only for compatibility)
+
+    """
     # discretize data to integers
     target_data = pd.concat([target, data], axis=1)
     target_data = target_data.apply(lambda x: pd.factorize(x)[0])
@@ -179,11 +181,11 @@ def binary_swarm(data, target, n_features, estimator=None):
     """ Binary Particle Swarm optimization
         Source: https://pyswarms.readthedocs.io/en/development/examples/feature_subset_selection.html
 
-        Keyword arguments:
-        data -- feature matrix
-        target -- regression or classification targets
-        n_features -- number of features to select
-        estimator -- estimator used to determine score
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to select
+    estimator -- estimator used to determine score
     """
 
     # TODO: include number of desired features
@@ -218,7 +220,7 @@ def binary_swarm(data, target, n_features, estimator=None):
     optimizer = ps.discrete.BinaryPSO(n_particles=30, dimensions=dimensions, options=options)
 
     # Perform optimization
-    _, pos = optimizer.optimize(f, iters=100, verbose=2)
+    _, pos = optimizer.optimize(f, iters=100, verbose=0)
 
     result_vector = convert_vector(pos)
 
