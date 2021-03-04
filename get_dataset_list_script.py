@@ -17,5 +17,5 @@ classification_binary_datasets = get_datasets(2)
 #regression_datasets = get_datasets(0)
 
 print(classification_binary_datasets)
-classification_binary_datasets.to_csv("datasets/classification_binary_datasets.csv", index=False)
+classification_binary_datasets.to_csv("results/datasets/classification_binary_datasets.csv", index=False)
 #regression_datasets.to_csv("datasets/regression_datasets.csv", index=False)
