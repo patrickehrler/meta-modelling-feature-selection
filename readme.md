@@ -1,6 +1,8 @@
 # Feature Selection using Bayesian Optimization 
 ## Instructions
 ### Install Python dependencies
+Required Python version: 3.6.9
+
     pip3 install -r requirements.txt
 ### Run experiment
 #### Iteration experiment
