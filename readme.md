@@ -30,6 +30,8 @@ Replace the following files in the folder "virtualenv-feature-selection/lib/pyth
 
 Results are stored in the folder "results/".
 
+To leave the virtualenv environment enter "deactivate".
+
 ## Repository Structure
 - **jupyter-notebook/** Folder that consist the experiment of the proposal presentation and visualization for the final work.
 - **results/** Folder where the results of the experiments are saved.
