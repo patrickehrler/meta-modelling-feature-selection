@@ -4,6 +4,10 @@
 Required Python version: 3.6.9
 
     pip3 install -r requirements.txt
+
+A custom version of scikit-optimize has to be installed.
+Replace files in the folder "skopt" of your local scikit-optimize installation with the following (especially the files "space/space.py", "optimizer/base.py" and "optimizer/optimizer.py"): https://github.com/patrickehrler/scikit-optimize/tree/master/skopt
+
 ### Run experiment
 #### Iteration experiment
     python3 iter_experiment.py
