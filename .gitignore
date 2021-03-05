@@ -1,2 +1,6 @@
 __pycache__
 .vscode
+virtualenv-feature-selection
+report.log
+convergence.png
+*.eps
