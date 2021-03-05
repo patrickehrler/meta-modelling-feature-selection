@@ -3,10 +3,24 @@
 ### Install Python dependencies
 Required Python version: 3.6.9
 
+Install virtualenv
+
+    pip3 install virtualenv==20.4.2
+Create new virtualenv environment
+
+    virtualenv -p 3.6.9 virtualenv-feature-selection
+Activate environment
+
+    source virtualenv-feature-selection/bin/activate
+Install dependencies
+
     pip3 install -r requirements.txt
 
 A custom version of scikit-optimize has to be installed.
-Replace files in the folder "skopt" of your local scikit-optimize installation with the following (especially the files "space/space.py", "optimizer/base.py" and "optimizer/optimizer.py"): https://github.com/patrickehrler/scikit-optimize/tree/master/skopt
+Replace the following files in the folder "virtualenv-feature-selection/lib/python3.6/site-packages/skopt" with the respective files in https://github.com/patrickehrler/scikit-optimize/tree/master/skopt
+- space/space.py
+- optimizer/base.py
+- optimizer/optimizer.py
 
 ### Run experiment
 #### Iteration experiment
@@ -15,6 +29,8 @@ Replace files in the folder "skopt" of your local scikit-optimize installation w
     python3 comparison_experiment.py
 
 Results are stored in the folder "results/".
+
+To leave the virtualenv environment enter "deactivate".
 
 ## Repository Structure
 - **jupyter-notebook/** Folder that consist the experiment of the proposal presentation and visualization for the final work.
