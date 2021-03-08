@@ -23,6 +23,7 @@ Replace the following files in the folder "virtualenv-feature-selection/lib/pyth
 - optimizer/optimizer.py
 
 ### Run experiment
+Experiment settings (datasets, number of features, cross-validation, ...) can be specified in "config.py".
 #### Iteration experiment
     python3 iter_experiment.py
 #### Comparison Experiment
