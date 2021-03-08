@@ -148,7 +148,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         verbose=False
     )
 
-    plot_convergence(optimizer).figure.savefig("convergence.png")
+    #plot_convergence(optimizer).figure.savefig("convergence.png")
 
     if (discretization_method == "round" or discretization_method == "probabilistic_round") and n_features is not None:
         # to limit the number of selected features on "round" or "probabilistic_round" we use the n highest features after the last bayesian iteration step

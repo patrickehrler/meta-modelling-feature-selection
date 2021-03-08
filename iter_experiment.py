@@ -40,8 +40,13 @@ def experiment_bayesian_iter_performance():
                         for metric, _ in metrics.items():
                             for learning_method, _ in approaches.learning_methods.items():
                                 for discretization_method, _ in approaches.discretization_methods.items():
+                                    if discretization_method == "binary" or discretization_method == "categorical":
+                                        # always sample points with excact n_features selected features
+                                        acq_optimizer = "n_sampling"
+                                    else:
+                                        acq_optimizer = "sampling"
+
                                     for acq, _ in approaches.acquisition_functions.items():
-                                        # TODO: currently final feature set is always limited, maybe also include case where bay opt selects an undefined number of features
                                         for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                                             if learning_method == "GP":
                                                 for kernel, _ in approaches.kernels.items():
@@ -49,15 +54,15 @@ def experiment_bayesian_iter_performance():
                                                         # hamming kernel only for categorical and binary search-spaces
                                                         if discretization_method == "categorical" or discretization_method == "binary":
                                                             mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                            skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt))))
+                                                            skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt, acq_optimizer))))
                                                     else:
                                                         mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt))))
+                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt, acq_optimizer))))
                                             else:
                                                 # random forest only for categorical or binary search-spaces
                                                 if learning_method == "categorical" or learning_method == "binary":
                                                     mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt))))
+                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt, acq_optimizer))))
 
                 # get finished tasks (display tqdm progressbar)
                 results = [tuple(r[0:9]) + tuple([r[9].get()]) for r in tqdm(mp_results)]
