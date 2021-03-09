@@ -2,28 +2,39 @@
 # Settings File
 ##################
 
-# Experiment-specific properties
-# 1. Comparison experiment
-# 1.1 Bayesian optimization max iterations
-n_calls = 50
-# 2. Iteration Experiment
-# 2.1 Maximum number of iterations
+##
+# 1. Experiment-specific properties
+##
+# 1.1. Comparison experiment
+# 1.1.1. Bayesian optimization max iterations
+n_calls = 100
+# 1.1.2 Bayesian optimization convergence: stop optimization after n iterations without new optimum
+n_convergence = 20
+
+# 1.2. Iteration Experiment
+# 1.2.1. Maximum number of iterations
 max_calls = 200
 
-# number of processes for parallelization
+
+
+##
+# 2. General properties
+##
+# 2.1. Number of processes for parallelization
 n_processes = 4
 
-# number of splits for cross-validation (outside)
+# 2.2. Number of splits for cross-validation (outside)
 n_splits = 5
-# number of cross-validation splits inside of bayesian optimization
+
+# 2.3. number of cross-validation splits inside of bayesian optimization
 n_splits_bay_opt = 2
 
-# number of features to be selected
+# 2.4. Number of features to be selected
 min_nr_features = 5
 max_nr_features = 20
 iter_step_nr_features = 5
 
-# openml.org dataset id 
+# 2.5. Datasets use (openml.org dataset id) 
 data_ids = {
     "classification": {
         # experiment datasets
@@ -57,13 +68,7 @@ data_ids = {
         41966: False,
         41967: False,
         41973: False,
-        # very small test datasets
+        # very small test dataset
         1510: False # 30 features
-    },
-    "regression": {
-        1510: False, # 30 features
-        1485: False, # 500 features
-        1458: False, # 10000 features
-        1079: False # 22278 features
     }
 }
