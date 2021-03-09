@@ -20,7 +20,7 @@ n_splits_bay_opt = 2
 
 # number of features to be selected
 min_nr_features = 5
-max_nr_features = 15
+max_nr_features = 20
 iter_step_nr_features = 5
 
 # openml.org dataset id 

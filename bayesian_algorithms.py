@@ -1,3 +1,4 @@
+from callback import nIterationsStopper
 from GPyOpt.methods import BayesianOptimization
 from numpy.random import seed
 from sklearn.model_selection import KFold
@@ -16,7 +17,7 @@ import pandas as pd
 import tempfile
 
 
-def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, intermediate_results=False, penalty_weight=0, cross_validation=0, acq_optimizer="sampling", n_random_starts=5, random_state=123, noise="gaussian"):
+def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, intermediate_results=False, penalty_weight=0, cross_validation=0, acq_optimizer="sampling", n_random_starts=5, random_state=123, noise="gaussian", n_convergence=20):
     """ Run Scikit-Optimize Implementation of Bayesian Optimization (only works with Gaussian processes and Matern or RBF kernel)
 
     Keyword arguments:
@@ -37,8 +38,10 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     n_random_starts -- number of initial random evaluations
     random_state -- seed for randomizer
     noise -- 
+    n_convergence -- stop optimization if for n_convergence iterations the optimum did not change
 
     """
+    print(acq_optimizer)
     # define black box function
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
@@ -69,8 +72,8 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         else:
             raise ValueError("Undefined cross-validation value.")
 
-        # print(score)
-        # print(sum(mask))
+        #print(score)
+        #print(sum(mask))
 
         return score
 
@@ -141,14 +144,15 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         n_calls=n_calls,         # the number of evaluations of f
         n_initial_points=n_random_starts,  # the number of random initialization points
         random_state=random_state,  # the random seed
+        callback=nIterationsStopper(n_iterations=n_convergence), # convergence criterion
         initial_point_generator="random",
         # kappa=10000000, # do more exploration (LCB)
         # xi=0.0000001, # do more exploration (PI, EI)
         n_points=10000,  # number of points evaluated of the acquisition function per iteration
-        verbose=False
+        verbose=True
     )
 
-    #plot_convergence(optimizer).figure.savefig("convergence.png")
+    plot_convergence(optimizer).figure.savefig("convergence.png")
 
     if (discretization_method == "round" or discretization_method == "probabilistic_round") and n_features is not None:
         # to limit the number of selected features on "round" or "probabilistic_round" we use the n highest features after the last bayesian iteration step
