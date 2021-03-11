@@ -51,16 +51,18 @@ def experiment_bayesian_iter_performance():
                                             if learning_method == "GP":
                                                 for kernel, _ in approaches.kernels.items():
                                                     if kernel == "HAMMING":
-                                                        # hamming kernel only for categorical and binary search-spaces
-                                                        if discretization_method == "categorical" or discretization_method == "binary":
+                                                        # hamming kernel only for categorical search-spaces
+                                                        if discretization_method == "categorical":
                                                             mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                            skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt, acq_optimizer))))
+                                                                skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt, acq_optimizer))))
                                                     else:
-                                                        mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
-                                                        skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt, acq_optimizer))))
+                                                        # Matern and RBF kernles for all discretization methods except categorical
+                                                        if discretization_method != "categorical":
+                                                            mp_results.append((dataset_id, estimator, metric, learning_method, kernel, discretization_method, acq, n_features, test_index, pool.apply_async(
+                                                                skopt, args=(data.loc[train_index], target.loc[train_index], n_features, kernel, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 1, config.n_splits_bay_opt, acq_optimizer))))
                                             else:
-                                                # random forest only for categorical or binary search-spaces
-                                                if learning_method == "categorical" or learning_method == "binary":
+                                                # random forest only for categorical search-spaces
+                                                if learning_method == "categorical":
                                                     mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_features, test_index, pool.apply_async(
                                                         skopt, args=(data.loc[train_index], target.loc[train_index], n_features, None, learning_method, discretization_method, estimator, metric, acq, config.max_calls, True, 0, config.n_splits_bay_opt, acq_optimizer))))
 

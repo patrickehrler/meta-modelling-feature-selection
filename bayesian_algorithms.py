@@ -41,13 +41,12 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     n_convergence -- stop optimization if for n_convergence iterations the optimum did not change
 
     """
-    print(acq_optimizer)
     # define black box function
     def black_box_function(*args):
         # apply discretization method on value to be evaluated
         mask = discretize(args[0], discretization_method, n_features)
         # calculate penalty score
-        penalty_score = abs(sum(mask)-n_features)
+        penalty_score = abs(sum(mask)-n_features)/len(data.columns)
         if penalty_weight < 0:
             raise ValueError("Undefined penalty weight.")
 
@@ -148,8 +147,8 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         initial_point_generator="random",
         # kappa=10000000, # do more exploration (LCB)
         # xi=0.0000001, # do more exploration (PI, EI)
-        n_points=10000,  # number of points evaluated of the acquisition function per iteration
-        verbose=True
+        n_points=50000,  # number of points evaluated of the acquisition function per iteration
+        verbose=False
     )
 
     plot_convergence(optimizer).figure.savefig("convergence.png")

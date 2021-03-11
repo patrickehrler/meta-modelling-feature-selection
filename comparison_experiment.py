@@ -35,13 +35,16 @@ def init_progress_bar():
         for _, _ in iter.items():
             number_classification_estimators += 1
 
-    # calculate numbe rof dataset/estimator combinations
+    # calculate number of dataset/estimator combinations
     number_datasets_and_estimators = ((number_datasets_classification * number_classification_estimators
                                        ) + (number_datasets_regression * number_regression_estimators)) * config.n_splits
 
     # calculate number of bayesian approaches
-    number_of_bayesian = (len(approaches.discretization_methods) * len(approaches.acquisition_functions)) * (
-        (len(approaches.learning_methods)-1) + len(approaches.kernels))  # only gaussian processes use kernels
+    #number_of_bayesian = (len(approaches.discretization_methods) * len(approaches.acquisition_functions)) * (
+    #    (len(approaches.learning_methods)-1) + len(approaches.kernels))  # only gaussian processes use kernels
+    # 1. integer, n_highest, probabilistic_round and round together with GP matern and RBF kernels
+    # 2. categorical with GP Hamming kernel and random forest
+    number_of_bayesian = len(approaches.acquisition_functions) * ((4 * 2) + (2))
 
     # calculate number of comparison approaches
     number_of_comparison = 0
@@ -89,21 +92,35 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                     acq_optimizer = "sampling"
                 for acq, _ in approaches.acquisition_functions.items():
                     if learn == "GP":
-                        # kernels only apply for gaussian processes
                         for kernel, kernel_descr in approaches.kernels.items():
+                            # kernels only apply for gaussian processes
+                            if kernel == "HAMMING":
+                                # hamming kernel only for categorical and binary search-spaces
+                                if discr == "categorical":
+                                    for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
+                                        vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                                     kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence)
+                                        df_results.loc[len(df_results)] = [
+                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                        queue.put(1)  # increase progress bar
+                            else:
+                                # Matern and RBF kernels for all discretization methods except categorical
+                                if discr != "categorical":
+                                    for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
+                                        vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                                     kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence)
+                                        df_results.loc[len(df_results)] = [
+                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                        queue.put(1)  # increase progress bar
+                    else:
+                        # random forests only in categorical search space
+                        if discr == "categorical":
                             for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
                                 vector, score = algo(data=data_training, target=target_training, learning_method=learn,
-                                                     kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence)
+                                                    discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence)
                                 df_results.loc[len(df_results)] = [
-                                    algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                    algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
                                 queue.put(1)  # increase progress bar
-                    else:
-                        for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                            vector, score = algo(data=data_training, target=target_training, learning_method=learn,
-                                                 discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence)
-                            df_results.loc[len(df_results)] = [
-                                algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
-                            queue.put(1)  # increase progress bar
             
     # generate test scores
     df_results_with_test_scores = add_testing_score(
