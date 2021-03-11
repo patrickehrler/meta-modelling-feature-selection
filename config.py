@@ -34,11 +34,14 @@ min_nr_features = 5
 max_nr_features = 20
 iter_step_nr_features = 5
 
+# 2.5 Number of points to evaluate of the acquisition function
+n_acq_points = 100000
+
 # 2.5. Datasets use (openml.org dataset id) 
 data_ids = {
     "classification": {
         # experiment datasets
-        12: True,
+        12: False,
         312: False,
         978: False,
         1038: False,
@@ -69,6 +72,6 @@ data_ids = {
         41967: False,
         41973: False,
         # very small test dataset
-        1510: False # 30 features
+        1510: True # 30 features
     }
 }

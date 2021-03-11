@@ -17,7 +17,7 @@ import pandas as pd
 import tempfile
 
 
-def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, intermediate_results=False, penalty_weight=0, cross_validation=0, acq_optimizer="sampling", n_convergence=20, n_random_starts=5, random_state=123, noise="gaussian"):
+def skopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="linear_regression", metric="r2", acq_func="PI", n_calls=20, intermediate_results=False, penalty_weight=0, cross_validation=0, acq_optimizer="sampling", n_convergence=20, n_acq_points=10000, n_random_starts=5, random_state=123, noise="gaussian"):
     """ Run Scikit-Optimize Implementation of Bayesian Optimization (only works with Gaussian processes and Matern or RBF kernel)
 
     Keyword arguments:
@@ -36,6 +36,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     acq_optimizer -- strategy to sample points of aqcuisition function 
             (default: "sampling", use "n_sampling" to only consider points where n_features are selected)
     n_convergence -- stop optimization if for n_convergence iterations the optimum did not change (to disable set None)
+    n_acq_points -- number of points of the acquisition function to evaluate in each iteration
     n_random_starts -- number of initial random evaluations
     random_state -- seed for randomizer
     noise -- 
@@ -147,11 +148,11 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         initial_point_generator="random",
         # kappa=10000000, # do more exploration (LCB)
         # xi=0.0000001, # do more exploration (PI, EI)
-        n_points=100000,  # number of points evaluated of the acquisition function per iteration
+        n_points=n_acq_points,  # number of points evaluated of the acquisition function per iteration
         verbose=False
     )
 
-    plot_convergence(optimizer).figure.savefig("convergence.png")
+    #plot_convergence(optimizer).figure.savefig("convergence.png")
 
     if (discretization_method == "round" or discretization_method == "probabilistic_round") and n_features is not None:
         # to limit the number of selected features on "round" or "probabilistic_round" we use the n highest features after the last bayesian iteration step
