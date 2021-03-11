@@ -10,6 +10,10 @@ class nIterationsStopper(EarlyStopper):
     def _criterion(self, result):
         total_iterations = len(result.func_vals)
 
+        if self.n_iterations is None:
+            # disable nIterationsStopper
+            return None
+
         if total_iterations > self.n_iterations:
             start = total_iterations-self.n_iterations-1
             stop = total_iterations
