@@ -38,6 +38,7 @@ To leave the virtualenv environment enter "deactivate".
 - **results/** Folder where the results of the experiments are saved.
 - **approaches.py** Consists of dictionaries where all bayesian and comparison approaches are listed (including all adjustments)
 - **bayesian_algorithms.py** Implements the actual Bayesian optimization based on two different libraries.
+- **callback.py** Custom convergence callback function for scikit-optimize Bayesian optimization.
 - **comparison_algorithms.py** Implements different filter, wrapper and embedded feature selection techniques based on various libraries.
 - **comparison_experiment.py** Runs all possible Bayesian and comparison approaches (including CV), then stores results in "results/comparison_bayesian_experiment/".
 - **config.py** Configuration file where number of iterations, number of cross-validation splits, number of features and the used datasets can be set.
