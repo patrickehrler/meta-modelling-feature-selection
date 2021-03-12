@@ -25,8 +25,12 @@ Replace the following files in the folder "virtualenv-feature-selection/lib/pyth
 ### Run experiment
 Experiment settings (datasets, number of features, cross-validation, ...) can be specified in "config.py".
 #### Iteration experiment
+This exeriment runs only Bayesian optimization. No convergence criterion is applied, only the maxmimum number of iterations. The result consists of the  training and testing scores of each iteration. The results can be used to examine the convergence of a particular Bayesian approach.
+
     python3 iter_experiment.py
 #### Comparison Experiment
+This experiment runs Bayesian optimization (incl. convergence criterion) and all comparison approaches. The result consists of the final training and testing scores. 
+
     python3 comparison_experiment.py
 
 Results are stored in the folder "results/".
