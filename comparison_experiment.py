@@ -1,12 +1,13 @@
-from comparison_algorithms import rfe, sfs, sfm
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
 from tqdm import tqdm
+import multiprocessing as mp
+import pandas as pd
+
+from comparison_algorithms import rfe, sfs, sfm
 from utils import get_score, add_testing_score
 import approaches
 import config
-import multiprocessing as mp
-import pandas as pd
 
 def init_progress_bar():
     """ Initialize progress bar (calculate number of steps).

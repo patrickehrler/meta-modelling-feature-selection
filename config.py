@@ -37,7 +37,9 @@ iter_step_nr_features = 5
 # 2.5 Number of points to evaluate of the acquisition function
 n_acq_points = 100000
 
-# 2.5. Datasets use (openml.org dataset id) 
+# 2.5. Datasets used
+# numbers represent openml.org dataset ids
+# booleans represent if a dataset is used for the experiment or not
 data_ids = {
     "classification": {
         # experiment datasets

@@ -1,12 +1,13 @@
-from bayesian_algorithms import skopt, discretize, gpyopt
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
 from tqdm import tqdm
+import multiprocessing as mp
+import pandas as pd
+
+from bayesian_algorithms import skopt, discretize
 from utils import get_score
 import approaches
 import config
-import multiprocessing as mp
-import pandas as pd
 
 def experiment_bayesian_iter_performance():
     """ Runs bayesian optimization to compare the performance depending on the iteration steps for all datasets/estimators/metrics.

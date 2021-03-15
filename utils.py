@@ -58,7 +58,7 @@ def convert_vector(vector):
 
 
 def add_testing_score(data_training, data_test, target_training, target_test, dataframe, estimator, metric):
-    """ Calculate score for each row in dataframe and add it as a column
+    """ Calculate score based on given data and target for each vector of a dataframe
 
     Keyword arguments:
     data -- feature matrix

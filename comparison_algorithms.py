@@ -1,14 +1,14 @@
-from bayesian_algorithms import discretize
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from scipy.stats import pearsonr
 from sklearn.feature_selection import RFE, SelectFromModel, SelectKBest, f_classif, mutual_info_classif
-from utils import convert_vector, get_estimator
 import numpy as np
 import pandas as pd
 import pandas as pd
 import pymrmr
 import pyswarms as ps
 
+from bayesian_algorithms import discretize
+from utils import convert_vector, get_estimator
 
 def sfs(data, target, n_features=None, estimator="linear_regression", metric=None):
     """ Run Sequential Feature Selection (a wrapper method)
