@@ -68,6 +68,8 @@ def experiment_bayesian_iter_performance():
 
                 # get finished tasks (display tqdm progressbar)
                 results = [tuple(r[0:9]) + tuple([r[9].get()]) for r in tqdm(mp_results)]
+                pool.close()
+                pool.join()
 
                 # store in pandas dataframe
                 list_columns = ["Dataset ID", "Estimator", "Metric", "Learning Method", "Kernel", "Discretization Method", "Acquisition Function", "Number Features", "Iteration Steps"]

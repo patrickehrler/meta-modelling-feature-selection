@@ -250,6 +250,8 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
             results_bay_opt.append(r.get())
         else:
             results_without_fs.append(r.get())
+    pool.close()
+    pool.join()
 
     # Concat bayesian and comparison result-arrays to combined dataframes
     df_comparison = pd.concat(results_comparison, ignore_index=True)
