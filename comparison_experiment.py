@@ -242,12 +242,11 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
     pool = mp.Pool(processes=config.n_processes)
     mp_results = []
     for train_index, test_index in kf:
-        mp_results.append(("comparison", pool.apply_async(__run_all_comparison, args=(data.loc[train_index], data.loc[test_index],
-                                                                                      target[train_index], target[test_index], estimator, metric, queue))))
-        mp_results.append(("bayesian", pool.apply_async(__run_all_bayesian, args=(data.loc[train_index], data.loc[test_index],
-                                                                                  target[train_index], target[test_index], estimator, metric, n_calls, queue))))
-        mp_results.append(("without", pool.apply_async(__run_without_fs, args=(data.loc[train_index], data.loc[test_index],
-                                                                                      target[train_index], target[test_index], estimator, metric, queue))))
+        mp_results.append(("comparison", pool.apply_async(__run_all_comparison, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index], "target_training":target[train_index], "target_test":target[test_index], "estimator":estimator, "metric":metric, "queue":queue})))
+        mp_results.append(("bayesian", pool.apply_async(__run_all_bayesian, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index],
+                                                                                  "target_training":target[train_index], "target_test":target[test_index], "estimator":estimator, "metric":metric, "n_calls":n_calls, "queue":queue})))
+        mp_results.append(("without", pool.apply_async(__run_without_fs, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index],
+                                                                                      "target_training":target[train_index], "target_test":target[test_index], "estimator":estimator, "metric":metric, "queue":queue})))
 
     # receive results from multiprocessing
     results_comparison = []
