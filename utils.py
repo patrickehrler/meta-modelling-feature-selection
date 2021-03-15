@@ -16,6 +16,8 @@ def get_score(data_training, data_test, target_training, target_test, mask, esti
     estimator -- estimator used to predict target-values
     metric -- metric used to calculate score
 
+    Return: score of test data applied on model trained by training data
+
     """
 
     if data_test is None:
@@ -49,6 +51,8 @@ def convert_vector(vector):
     Keyword arguments:
     vector -- vector of True/False values
 
+    Return: 0/1 vector
+
     """
     return [int(x) for x in vector]
 
@@ -62,6 +66,8 @@ def add_testing_score(data_training, data_test, target_training, target_test, da
     dataframe -- pandas dataframe with column 'Vector'
     estimator -- estimator used to predict target-values
     metric -- metric used to calculate score 
+
+    Return: dataframe including testing scores for each instance
 
     """
     for row in dataframe.index:
@@ -77,6 +83,8 @@ def get_estimator(estimator):
 
     Keyword arguments:
     estimator -- estimator -- estimator name
+
+    Return: estimator object
 
     """
     if estimator == "linear_regression":

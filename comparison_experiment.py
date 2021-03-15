@@ -11,6 +11,8 @@ import pandas as pd
 def init_progress_bar():
     """ Initialize progress bar (calculate number of steps).
 
+    Return: progressbar object
+
     """
     # calculate number of datasets
     number_datasets_classification = 0
@@ -78,6 +80,8 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
     n_calls -- number of iterations in bayesian optimization
     queue -- queue to synchronize progress bar
 
+    Return: Dataframe of all possible bayesian results (including testing scores)
+
     """
     # Define result dataframes
     df_results = pd.DataFrame(
@@ -141,6 +145,8 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
     metric -- metric used to calculate score
     queue -- queue to synchronize progress bar
 
+    Return: Dataframe of all possible comparison results (including testing scores)
+
     """
     # Define result dataframe
     df_results = pd.DataFrame(
@@ -178,6 +184,8 @@ def __run_without_fs(data_training, data_test, target_training, target_test, est
     metric -- metric used to calculate score
     queue -- queue to synchronize progress bar
 
+    Return: Dataframe of the result scores without any feature selection
+
     """
     df_results = pd.DataFrame(columns=["Training Score", "Testing Score"])
     vector = [1 for _ in range(0,len(data_training.columns))]
@@ -214,6 +222,8 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
     metric -- metric used to calculate score
     n_calls -- number of iterations in bayesian optimization
     queue -- queue to synchronize progress bar
+
+    Return: tuple of bayesian results, comparison results and results without feature selection
 
     """
     # Import dataset

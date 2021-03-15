@@ -41,6 +41,10 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     random_state -- seed for randomizer
     noise -- 
 
+    Return:
+    if intermediate_results is True: returns a tuple of the result vector, a set of all intermediate vectors and a set of all intermediate function values
+    otherwise: returns tuple of result vector and final training score
+
     """
     # define black box function
     def black_box_function(*args):
@@ -191,6 +195,10 @@ def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", dis
     random_state -- seed for randomizer
     noise -- 
 
+    Return:
+    if intermediate_results is True: returns a tuple of the result vector, a set of all intermediate vectors and a set of all intermediate function values
+    otherwise: returns tuple of result vector and final training score
+
     """
     # define black box function
     def black_box_function(*args):
@@ -311,6 +319,8 @@ def discretize(data, discretization_method, n_features=None):
     data -- vector to be discretized
     discretization_method -- method on how to make vector discrete
     n_features -- number of features to be selected for discretization_method="n_highest"
+
+    Return: discretized data set
 
     """
     if discretization_method == "round":

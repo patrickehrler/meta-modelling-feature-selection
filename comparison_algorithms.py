@@ -21,6 +21,8 @@ def sfs(data, target, n_features=None, estimator="linear_regression", metric=Non
     estimator -- estimator used to determine score
     metric -- metric used to calculate score
 
+    Return: result vector
+
     """
     if n_features is None:
         n_features = "best"
@@ -53,6 +55,8 @@ def rfe(data, target, n_features=10, estimator="linear_regression"):
     n_features -- number of features to be selected; if 'None' then 10 features will be selected
     estimator -- estimator used to determine score
 
+    Return: result vector
+
     """
     rfe_selection = RFE(estimator=get_estimator(estimator),
                         n_features_to_select=n_features,
@@ -76,6 +80,8 @@ def sfm(data, target, n_features=None, estimator="linear_regression"):
     target -- regression or classification targets
     n_features -- number of features to select
     estimator -- estimator used to determine score
+
+    Return: result vector
 
     """
     sfm_selection = SelectFromModel(estimator=get_estimator(
@@ -114,6 +120,8 @@ def n_best_anova_f(data, target, n_features, estimator=None):
     n_features -- number of features to select
     estimator -- ignored (only for compatibility)
 
+    Return: result vector
+
     """
     skb_selection = SelectKBest(score_func=f_classif, k=n_features).fit(data, target)
 
@@ -129,6 +137,8 @@ def n_best_mutual(data, target, n_features, estimator=None):
     target -- regression or classification targets
     n_features -- number of features to select
     estimator -- ignored (only for compatibility)
+
+    Return: result vector
 
     """
     mutual_selection = SelectKBest(score_func=mutual_info_classif, k=n_features).fit(data,target)
@@ -147,6 +157,8 @@ def n_best_pearsonr(data, target, n_features, estimator=None):
     n_features -- number of features to select
     estimator -- ignored (only for compatibility)
 
+    Return: result vector
+
     """
     pearson_selection = [abs(pearsonr(data.loc[:,feature], target.astype("float"))[1]) for feature in data.columns]
     result_vector = discretize(pearson_selection, "n_highest", n_features)
@@ -161,6 +173,8 @@ def pymrmr_fs(data, target, n_features, estimator=None):
     target -- regression or classification targets
     n_features -- number of features to select
     estimator -- ignored (only for compatibility)
+
+    Return: result vector
 
     """
     # discretize data to integers
@@ -186,6 +200,9 @@ def binary_swarm(data, target, n_features, estimator=None):
     target -- regression or classification targets
     n_features -- number of features to select
     estimator -- estimator used to determine score
+
+    Return: result vector
+    
     """
 
     # TODO: include number of desired features
