@@ -317,5 +317,5 @@ def experiment_all_datasets_and_estimators():
     queue.put(None)
     proc.join()
 
-
-experiment_all_datasets_and_estimators()
+if __name__ == "__main__":
+    experiment_all_datasets_and_estimators()

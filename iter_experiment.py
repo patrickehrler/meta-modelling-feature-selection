@@ -103,4 +103,5 @@ def experiment_bayesian_iter_performance():
                 df_result_grouped_ordered.to_csv(
                     "results/iteration_number_experiment/bay_opt_iterations_" + str(dataset_id) + ".csv", index=False)
 
-experiment_bayesian_iter_performance()
+if __name__ == "__main__":
+    experiment_bayesian_iter_performance()
