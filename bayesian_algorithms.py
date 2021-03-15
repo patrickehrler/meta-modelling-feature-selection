@@ -164,7 +164,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     if intermediate_results == True:
         # return set of all vectors and all function values
         result_vector_set = optimizer.x_iters
-        result_fun_set = list(map(lambda x: 1-x, optimizer.func_vals))
+        result_fun_set = [1-x for x in optimizer.func_vals]
         return result_vector, result_vector_set, result_fun_set
     else:
         # only return final result vector and final function value
@@ -296,7 +296,7 @@ def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", dis
         evaluations = pd.read_csv(file_buffer.name, delimiter="\t")
 
         # split in function values and vectors
-        result_fun_set = list(map(lambda x: -x, evaluations.iloc[:, 1].values))
+        result_fun_set = [-x for x in evaluations.iloc[:, 1].values]
         result_vector_set = evaluations.iloc[:, 2:].values
 
         return result_vector, result_vector_set, result_fun_set
@@ -314,10 +314,10 @@ def discretize(data, discretization_method, n_features=None):
 
     """
     if discretization_method == "round":
-        return list(map(lambda x: round(x), data))
+        return [round(x) for x in data]
     elif discretization_method == "probabilistic_round":
         # 0 has probability 1-x, 1 has probability x
-        return list(map(lambda x: np.random.choice(a=[0, 1], p=[1-x, x]), data))
+        return [np.random.choice(a=[0, 1], p=[1-x, x]) for x in data]
     elif discretization_method == "n_highest":
         if n_features is not None:
             vector = [0 for _ in range(len(data))]
