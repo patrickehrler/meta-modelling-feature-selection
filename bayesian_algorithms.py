@@ -1,4 +1,4 @@
-from callback import nIterationsStopper
+from callback import NImprovementStopper
 from GPyOpt.methods import BayesianOptimization
 from numpy.random import seed
 from sklearn.model_selection import KFold
@@ -148,7 +148,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         n_calls=n_calls,         # the number of evaluations of f
         n_initial_points=n_random_starts,  # the number of random initialization points
         random_state=random_state,  # the random seed
-        callback=nIterationsStopper(n_iterations=n_convergence), # convergence criterion
+        callback=NImprovementStopper(n_iterations=n_convergence), # convergence criterion
         initial_point_generator="random",
         # kappa=10000000, # do more exploration (LCB)
         # xi=0.0000001, # do more exploration (PI, EI)

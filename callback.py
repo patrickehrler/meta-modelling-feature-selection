@@ -1,6 +1,6 @@
 from skopt.callbacks import EarlyStopper
 
-class nIterationsStopper(EarlyStopper):
+class NImprovementStopper(EarlyStopper):
     """Stop the optimization if the optimum did not change for the last n_iterations.
     """
     def __init__(self, n_iterations=10):
