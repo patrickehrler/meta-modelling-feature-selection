@@ -191,7 +191,7 @@ def pymrmr_fs(data, target, n_features, estimator=None):
 
     return result_vector
 
-def binary_swarm(data, target, n_features, estimator=None):
+def binary_swarm(data, target, n_features=None, estimator=None):
     """ Binary Particle Swarm optimization
         Source: https://pyswarms.readthedocs.io/en/development/examples/feature_subset_selection.html
 
@@ -205,8 +205,6 @@ def binary_swarm(data, target, n_features, estimator=None):
     
     """
 
-    # TODO: include number of desired features
-
     estimator = get_estimator(estimator)
     total_features = len(data.columns)
     # Define objective function
@@ -219,10 +217,15 @@ def binary_swarm(data, target, n_features, estimator=None):
         # Perform classification and store performance in P
         estimator.fit(X_subset, target)
         P = (estimator.predict(X_subset) == target).mean()
+        # Calculate penalty (to optimize towards the desired number of selected features)
+        if n_features is not None:
+            feature_overflow_penalty = abs(sum(mask)-n_features)/total_features
+        else:
+            feature_overflow_penalty = 0
         # Compute for the objective function
         j = (alpha * (1.0 - P)
-            + (1.0 - alpha) * (1 - (X_subset.shape[1] / total_features)))
-
+            + (1.0 - alpha) * (1 - (X_subset.shape[1] / total_features))) + feature_overflow_penalty
+            
         return j
     
     def f(x, alpha=0.88):
@@ -237,7 +240,7 @@ def binary_swarm(data, target, n_features, estimator=None):
     optimizer = ps.discrete.BinaryPSO(n_particles=30, dimensions=dimensions, options=options)
 
     # Perform optimization
-    _, pos = optimizer.optimize(f, iters=100, verbose=0)
+    _, pos = optimizer.optimize(f, iters=1000, verbose=0)
 
     result_vector = convert_vector(pos)
 
