@@ -4,16 +4,20 @@ from comparison_algorithms import rfe, sfs, sfm, n_best_anova_f, n_best_mutual, 
 # Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
 classification_estimators = {
     "svc_linear": {
-        "accuracy": "Support Vector Classification - Accuracy Score"
+        "accuracy": "Support Vector Classification - Accuracy Score",
+        "matthews": "Support Vector Classification - Matthews correlation"
     },
     "k_neighbours_classifier": {
-        "accuracy": "k Neighbours Classification - Accuracy Score"
+         "accuracy": "k Neighbours Classification - Accuracy Score",
+         "matthews": "k Neighbours Classification - Matthews correlation"
     },
     "random_forest": {
-        "accuracy": "Random Forest - Accuracy Score"
+        "accuracy": "Random Forest - Accuracy Score",
+        "matthews": "Random Forest - Matthews correlation"
     },
     "logistic_regression": {
-        "accuracy": "Logistic Regression Classifier - Accuracy Score"
+        "accuracy": "Logistic Regression Classifier - Accuracy Score",
+        "matthews": "Logistic Regression Classifier - Matthews correlation"
     }
 }
 regression_estimators = {
@@ -67,12 +71,12 @@ comparison_approaches = {
         #vt: "Variance Threshold",
         n_best_anova_f: "SelectKBest",
         n_best_mutual: "Highest mutual score",
-        n_best_pearsonr: "Highest pearson correlation", # probably not useful for classification targets
+        #n_best_pearsonr: "Highest pearson correlation", # probably not useful for classification targets
         pymrmr_fs: "mRMR",
         binary_swarm: "Binary particle swarm optimization"
     },
     "wrapper": {
-        sfs: "Sequential Feature Selection", # bad performance when many features
+        sfs: "Sequential Feature Selection",
         rfe: "Recursive Feature Selection"
     },
     "embedded": {

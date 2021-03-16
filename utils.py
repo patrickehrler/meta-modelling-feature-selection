@@ -1,7 +1,7 @@
 from itertools import compress
 from sklearn import svm
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import r2_score, explained_variance_score, accuracy_score
+from sklearn.metrics import r2_score, explained_variance_score, accuracy_score, matthews_corrcoef
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 
@@ -39,6 +39,8 @@ def get_score(data_training, data_test, target_training, target_test, mask, esti
     # classification metrics
     elif metric == "accuracy":
         score = accuracy_score(y_true=target_test, y_pred=y_pred)
+    elif metric == "matthews":
+        score = matthews_corrcoef(y_true=target_test, y_pred=y_pred)
     else:
         raise ValueError("Invalid metric")
 
