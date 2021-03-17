@@ -61,7 +61,8 @@ acquisition_functions = {
     # TODO: maybe just gp_hedge? - depends on performance
     "LCB": "lower confidence bound",
     "EI": "expected improvement",
-    "PI": "probability of improvement"
+    "PI": "probability of improvement",
+    "gp_hedge": "combination of PI, EI and LCB"
 }
 
 # Comparison Approaches Properties
@@ -69,7 +70,7 @@ comparison_parameters = ["Approach", "Algorithm", "n_features"]
 comparison_approaches = {
     "filter": {
         #vt: "Variance Threshold",
-        n_best_anova_f: "SelectKBest",
+        n_best_anova_f: "ANOVA f-values",
         n_best_mutual: "Highest mutual score",
         #n_best_pearsonr: "Highest pearson correlation", # probably not useful for classification targets
         pymrmr_fs: "mRMR",
