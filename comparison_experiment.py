@@ -1,9 +1,11 @@
-import numpy as np
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
 from tqdm import tqdm
+
 import multiprocessing as mp
+import numpy as np
 import pandas as pd
+import time
 
 from comparison_algorithms import rfe, sfs, sfm
 from utils import get_score, add_testing_score
@@ -80,7 +82,7 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
     """
     # Define result dataframes
     df_results = pd.DataFrame(
-        columns=approaches.bay_opt_parameters+["Number of Iterations", "Vector", "Training Score"])
+        columns=approaches.bay_opt_parameters+["Duration Black Box", "Duration Overhead", "Number of Iterations", "Vector", "Training Score"])
     for algo, algo_descr in approaches.bayesian_approaches.items():
         for learn, learn_descr in approaches.learning_methods.items():
             for discr, discr_descr in approaches.discretization_methods.items():
@@ -97,28 +99,37 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                                 # hamming kernel only for categorical and binary search-spaces
                                 if discr == "categorical":
                                     for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                        vector, score, nr_iters = algo(data=data_training, target=target_training, learning_method=learn,
+                                        start_time = time.time()
+                                        vector, score, nr_iters, black_box_duration = algo(data=data_training, target=target_training, learning_method=learn,
                                                      kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence, n_acq_points=config.n_acq_points)
+                                        duration = time.time() - start_time
+                                        duration_overhead = duration - black_box_duration
                                         df_results.loc[len(df_results)] = [
-                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, nr_iters, vector, score]
+                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, black_box_duration, duration_overhead, nr_iters, vector, score]
                                         queue.put(1)  # increase progress bar
                             else:
                                 # Matern and RBF kernels for all discretization methods except categorical
                                 if discr != "categorical":
                                     for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                        vector, score, nr_iters = algo(data=data_training, target=target_training, learning_method=learn,
+                                        start_time = time.time()
+                                        vector, score, nr_iters, black_box_duration = algo(data=data_training, target=target_training, learning_method=learn,
                                                      kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence, n_acq_points=config.n_acq_points)
+                                        duration = time.time() - start_time
+                                        duration_overhead = duration - black_box_duration
                                         df_results.loc[len(df_results)] = [
-                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features,nr_iters, vector, score]
+                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, black_box_duration, duration_overhead, nr_iters, vector, score]
                                         queue.put(1)  # increase progress bar
                     else:
                         # random forests only in categorical search space
                         if discr == "categorical":
                             for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                vector, score, nr_iters = algo(data=data_training, target=target_training, learning_method=learn,
+                                start_time = time.time()
+                                vector, score, nr_iters, black_box_duration = algo(data=data_training, target=target_training, learning_method=learn,
                                                     discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence, n_acq_points=config.n_acq_points)
+                                duration = time.time() - start_time
+                                duration_overhead = duration - black_box_duration
                                 df_results.loc[len(df_results)] = [
-                                    algo_descr, learn_descr, "-", discr_descr, acq, n_features, nr_iters, vector, score]
+                                    algo_descr, learn_descr, "-", discr_descr, acq, n_features, black_box_duration, duration_overhead, nr_iters, vector, score]
                                 queue.put(1)  # increase progress bar
             
     # generate test scores
@@ -145,7 +156,7 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
     """
     # Define result dataframe
     df_results = pd.DataFrame(
-        columns=approaches.comparison_parameters+["Vector", "Training Score"])
+        columns=approaches.comparison_parameters+["Duration", "Vector", "Training Score"])
     for approach, approach_descr in approaches.comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
             if (algo is rfe or algo is sfm or algo is sfs) and estimator == "k_neighbours_classifier":
@@ -153,12 +164,14 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
                 queue.put(1)  # increase progress bar
             else:
                 for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
+                    start_time = time.time()
                     vector = algo(data=data_training, target=target_training,
                                   n_features=n_features, estimator=estimator)
+                    duration = time.time() - start_time
                     score = get_score(data_training, data_training, target_training, target_training, vector,
                                       estimator, metric)
                     df_results.loc[len(df_results)] = [
-                        approach, algo_descr, n_features, vector, score]
+                        approach, algo_descr, n_features, duration, vector, score]
                     queue.put(1)  # increase progress bar
 
     # generate test scores
@@ -227,9 +240,9 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
 
     # Initialize result dataframe
     df_bay_opt = pd.DataFrame(columns=approaches.bay_opt_parameters +
-                              ["Number of Iterations", "Vector", "Training Score", "Testing Score"])
+                              ["Duration Black Box", "Duration Overhead" "Number of Iterations", "Vector", "Training Score", "Testing Score"])
     df_comparison = pd.DataFrame(
-        columns=approaches.comparison_parameters+["Vector", "Training Score", "Testing Score"])
+        columns=approaches.comparison_parameters+["Duration", "Vector", "Training Score", "Testing Score"])
     df_without_fs = pd.DataFrame(columns=["Training Score", "Testing Score"])
 
     # Split dataset into testing and training data then run all approaches in parallel
@@ -274,9 +287,9 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
 
     # Group results of cross-validation runs and determine min, max and mean of score-vaules and selected features
     df_bay_opt_grouped = df_bay_opt.groupby(approaches.bay_opt_parameters, as_index=False).agg(
-        {"Number of Iterations": ["mean"], "Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
+        {"Duration Black Box": ["mean"], "Duration Overhead": ["mean"], "Number of Iterations": ["mean"], "Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
     df_comparison_grouped = df_comparison.groupby(approaches.comparison_parameters, as_index=False).agg(
-        {"Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
+        {"Duration": ["mean"], "Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
     df_without_fs = df_without_fs.agg(
         {"Training Score": ["mean"], "Testing Score": ["mean"]})
 

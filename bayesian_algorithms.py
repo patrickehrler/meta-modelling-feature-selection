@@ -4,11 +4,12 @@ from sklearn.model_selection import KFold
 from sklearn.utils.validation import check_random_state
 from skopt.learning.forest import RandomForestRegressor
 from skopt.learning.gaussian_process.gpr import GaussianProcessRegressor
-from skopt.learning.gaussian_process.kernels import (RBF, Matern, HammingKernel, DotProduct, ConstantKernel)
+from skopt.learning.gaussian_process.kernels import (RBF, Matern, HammingKernel)
 from skopt.optimizer import base_minimize
-from skopt.plots import plot_convergence
 from skopt.space import Integer, Real, Categorical
 from skopt.utils import cook_estimator
+
+import time
 import GPy
 import numpy as np
 import pandas as pd
@@ -44,11 +45,16 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
 
     Return:
     if intermediate_results is True: returns a tuple of the result vector, a set of all intermediate vectors and a set of all intermediate function values
-    otherwise: returns tuple of result vector, final training score and number of iterations (black box evaluations)
+    otherwise: returns tuple of result vector, final training score, number of iterations (black box evaluations) and the duration used for all black box evaluations
 
     """
+
+    # create list to store execution time of each black box evaluation
+    black_box_duration = list()
+
     # define black box function
     def black_box_function(*args):
+        start_time = time.time()
         # apply discretization method on value to be evaluated
         mask = discretize(args[0], discretization_method, n_features)
         # calculate penalty score
@@ -77,8 +83,9 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         else:
             raise ValueError("Undefined cross-validation value.")
 
-        #print(score)
-        #print(sum(mask))
+        # calculate time used to evaluate black box function
+        duration = time.time() - start_time
+        black_box_duration.append(duration)
 
         return score
 
@@ -113,11 +120,6 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
             elif kernel == "RBF":
                 # https://blogs.sas.com/content/iml/2018/09/26/radial-basis-functions-gaussian-kernels.html (basically squared distance)
                 base_estimator = GaussianProcessRegressor(1.0 * RBF())
-            elif kernel == "DOT":
-                base_estimator = GaussianProcessRegressor(1.0 * DotProduct())
-            elif kernel == "CONST":
-                base_estimator = GaussianProcessRegressor(
-                    1.0 * ConstantKernel())
             else:
                 raise ValueError("Invalid kernel.")
         else:
@@ -170,8 +172,10 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         result_fun_set = [1-x for x in optimizer.func_vals]
         return result_vector, result_vector_set, result_fun_set
     else:
-        # only return final result vector and final function value
-        return result_vector, 1 - optimizer.fun, len(optimizer.x_iters)
+        # return final result vector and final function value, the number of iterations and the total black box evaluation time
+        number_of_iterations = len(optimizer.x_iters)
+        sum_black_box_duration = sum(black_box_duration)
+        return result_vector, 1 - optimizer.fun, number_of_iterations, sum_black_box_duration
 
 
 # Alternative implementation of Bayesian optimization feature selection

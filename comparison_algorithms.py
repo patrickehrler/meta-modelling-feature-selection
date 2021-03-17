@@ -1,6 +1,7 @@
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from scipy.stats import pearsonr
 from sklearn.feature_selection import RFE, SelectFromModel, SelectKBest, f_classif, mutual_info_classif
+
 import numpy as np
 import pandas as pd
 import pandas as pd
@@ -157,7 +158,7 @@ def pymrmr_fs_miq(data, target, n_features, estimator=None):
     estimator -- ignored (only for compatibility)
 
     Return: result vector
-    
+
     """
     return __pymrmr_fs(data, target, n_features, "MIQ", None)
 
