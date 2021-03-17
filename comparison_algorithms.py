@@ -93,24 +93,6 @@ def sfm(data, target, n_features=None, estimator="linear_regression"):
     return result_vector
 
 
-"""def vt(data, target=None):
-     Run Variance Threshold feature selection. Threshhold is 0, which means only features with zero-variance are removed.
-
-    Keyword arguments:
-    data -- feature matrix
-    target -- ignored (only for compatibility)
-
-    
-    print("vt start")
-    # TODO: try different tresholds
-    vt_selection = VarianceThreshold(threshold=0)
-    vt_selection.fit(data)
-
-    result_vector = convert_vector(vt_selection.get_support())
-
-    return result_vector
-"""
-
 def n_best_anova_f(data, target, n_features, estimator=None):
     """ Run SelectKBest feature selection.
 
@@ -165,8 +147,22 @@ def n_best_pearsonr(data, target, n_features, estimator=None):
 
     return result_vector
 
-def pymrmr_fs(data, target, n_features, estimator=None):
-    """ Minimum redundancy feature selection
+def pymrmr_fs_miq(data, target, n_features, estimator=None):
+    """ Wrapper for mRMR with MIQ scheme
+
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to select
+    estimator -- ignored (only for compatibility)
+
+    Return: result vector
+    
+    """
+    return __pymrmr_fs(data, target, n_features, "MIQ", None)
+
+def pymrmr_fs_mid(data, target, n_features, estimator=None):
+    """ Wrapper for mRMR with MID scheme
 
     Keyword arguments:
     data -- feature matrix
@@ -177,11 +173,26 @@ def pymrmr_fs(data, target, n_features, estimator=None):
     Return: result vector
 
     """
+    return __pymrmr_fs(data, target, n_features, "MID", None)
+
+def __pymrmr_fs(data, target, n_features, scheme="MIQ", estimator=None):
+    """ Minimum redundancy feature selection
+
+    Keyword arguments:
+    data -- feature matrix
+    target -- regression or classification targets
+    n_features -- number of features to select
+    scheme -- mRMR scheme (MID or MIQ)
+    estimator -- ignored (only for compatibility)
+
+    Return: result vector
+
+    """
     # discretize data to integers
     target_data = pd.concat([target, data], axis=1)
     target_data = target_data.apply(lambda x: pd.factorize(x)[0])
 
-    result = pymrmr.mRMR(target_data, 'MIQ', n_features)
+    result = pymrmr.mRMR(target_data, scheme, n_features)
 
     # convert feature names to 0/1 vector
     result_vector = [0 for _ in data.columns]
@@ -191,6 +202,8 @@ def pymrmr_fs(data, target, n_features, estimator=None):
 
     return result_vector
 
+# NOT USED (because to limit number of features by penalty does not work well
+# therefore it is not really comparable to other approaches)
 def binary_swarm(data, target, n_features=None, estimator=None):
     """ Binary Particle Swarm optimization
         Source: https://pyswarms.readthedocs.io/en/development/examples/feature_subset_selection.html

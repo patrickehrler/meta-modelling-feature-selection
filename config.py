@@ -35,7 +35,7 @@ max_nr_features = 20
 iter_step_nr_features = 5
 
 # 2.5 Number of points to evaluate of the acquisition function
-n_acq_points = 100000
+n_acq_points = 10000
 
 # 2.5. Datasets used
 # numbers represent openml.org dataset ids

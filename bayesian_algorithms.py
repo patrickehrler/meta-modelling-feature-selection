@@ -176,6 +176,8 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         return result_vector, 1 - optimizer.fun
 
 
+# Alternative implementation of Bayesian optimization feature selection
+# Not used for the experiment
 def gpyopt(data, target, n_features=None, kernel=None, learning_method="GP", discretization_method="round", estimator="svc_linear", metric="accuracy", acq_func="PI", n_calls=15, intermediate_results=False, penalty_weight=10, cross_validation=0, n_random_starts=5, random_state=123):
     """ Run Scikit-Optimize Implementation of Bayesian Optimization
     Alternative to scikit-optimize. Currently not used in the experiment.
