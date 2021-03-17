@@ -1,3 +1,4 @@
+import numpy as np
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import KFold
 from tqdm import tqdm
@@ -17,30 +18,23 @@ def init_progress_bar():
     """
     # calculate number of datasets
     number_datasets_classification = 0
-    number_datasets_regression = 0
     for type, iter in config.data_ids.items():
         if type == "classification":
             for _, flag in iter.items():
                 if flag == True:
                     number_datasets_classification += 1
         else:
-            for _, flag in iter.items():
-                if flag == True:
-                    number_datasets_regression += 1
+            raise ValueError(
+                "Only classification datasets are supported currently!")
 
     # calculate number of estimators/metrics
-    number_regression_estimators = 0
-    for _, iter in approaches.regression_estimators.items():
-        for _, _ in iter.items():
-            number_regression_estimators += 1
     number_classification_estimators = 0
     for _, iter in approaches.classification_estimators.items():
         for _, _ in iter.items():
             number_classification_estimators += 1
 
     # calculate number of dataset/estimator combinations
-    number_datasets_and_estimators = ((number_datasets_classification * number_classification_estimators
-                                       ) + (number_datasets_regression * number_regression_estimators)) * config.n_splits
+    number_datasets_and_estimators = (number_datasets_classification * number_classification_estimators) * config.n_splits
 
     # calculate number of bayesian approaches
     #number_of_bayesian = (len(approaches.discretization_methods) * len(approaches.acquisition_functions)) * (
@@ -86,7 +80,7 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
     """
     # Define result dataframes
     df_results = pd.DataFrame(
-        columns=approaches.bay_opt_parameters+["Vector", "Training Score"])
+        columns=approaches.bay_opt_parameters+["Number of Iterations", "Vector", "Training Score"])
     for algo, algo_descr in approaches.bayesian_approaches.items():
         for learn, learn_descr in approaches.learning_methods.items():
             for discr, discr_descr in approaches.discretization_methods.items():
@@ -103,28 +97,28 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                                 # hamming kernel only for categorical and binary search-spaces
                                 if discr == "categorical":
                                     for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                        vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                        vector, score, nr_iters = algo(data=data_training, target=target_training, learning_method=learn,
                                                      kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence, n_acq_points=config.n_acq_points)
                                         df_results.loc[len(df_results)] = [
-                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, nr_iters, vector, score]
                                         queue.put(1)  # increase progress bar
                             else:
                                 # Matern and RBF kernels for all discretization methods except categorical
                                 if discr != "categorical":
                                     for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                        vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                        vector, score, nr_iters = algo(data=data_training, target=target_training, learning_method=learn,
                                                      kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence, n_acq_points=config.n_acq_points)
                                         df_results.loc[len(df_results)] = [
-                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, vector, score]
+                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features,nr_iters, vector, score]
                                         queue.put(1)  # increase progress bar
                     else:
                         # random forests only in categorical search space
                         if discr == "categorical":
                             for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                vector, score = algo(data=data_training, target=target_training, learning_method=learn,
+                                vector, score, nr_iters = algo(data=data_training, target=target_training, learning_method=learn,
                                                     discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence, n_acq_points=config.n_acq_points)
                                 df_results.loc[len(df_results)] = [
-                                    algo_descr, learn_descr, "-", discr_descr, acq, n_features, vector, score]
+                                    algo_descr, learn_descr, "-", discr_descr, acq, n_features, nr_iters, vector, score]
                                 queue.put(1)  # increase progress bar
             
     # generate test scores
@@ -233,7 +227,7 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
 
     # Initialize result dataframe
     df_bay_opt = pd.DataFrame(columns=approaches.bay_opt_parameters +
-                              ["Vector", "Training Score", "Testing Score"])
+                              ["Number of Iterations", "Vector", "Training Score", "Testing Score"])
     df_comparison = pd.DataFrame(
         columns=approaches.comparison_parameters+["Vector", "Training Score", "Testing Score"])
     df_without_fs = pd.DataFrame(columns=["Training Score", "Testing Score"])
@@ -269,16 +263,20 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
     df_without_fs = pd.concat(results_without_fs, ignore_index=True)
 
     # add column with number of selected features
-    df_bay_opt["actual_features"] = df_bay_opt.apply(
+    df_bay_opt["Actual Features"] = df_bay_opt.apply(
         lambda row: sum(row["Vector"]), axis=1)
-    df_comparison["actual_features"] = df_comparison.apply(
+    df_comparison["Actual Features"] = df_comparison.apply(
         lambda row: sum(row["Vector"]), axis=1)
+
+    # convert int to np.int64 to be able to aggrogate
+    df_bay_opt["Number of Iterations"] = df_bay_opt.apply(
+        lambda row: np.int64(row["Number of Iterations"]), axis=1)
 
     # Group results of cross-validation runs and determine min, max and mean of score-vaules and selected features
     df_bay_opt_grouped = df_bay_opt.groupby(approaches.bay_opt_parameters, as_index=False).agg(
-        {"actual_features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
+        {"Number of Iterations": ["mean"], "Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
     df_comparison_grouped = df_comparison.groupby(approaches.comparison_parameters, as_index=False).agg(
-        {"actual_features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
+        {"Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
     df_without_fs = df_without_fs.agg(
         {"Training Score": ["mean"], "Testing Score": ["mean"]})
 
@@ -301,7 +299,7 @@ def experiment_all_datasets_and_estimators():
                 if task == "classification":
                     estimators = approaches.classification_estimators
                 else:
-                    estimators = approaches.regression_estimators
+                    raise ValueError("Only classification estimators are supported currently!")
 
                 for estimator, metrics in estimators.items():
                     for metric, _ in metrics.items():

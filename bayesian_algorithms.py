@@ -44,7 +44,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
 
     Return:
     if intermediate_results is True: returns a tuple of the result vector, a set of all intermediate vectors and a set of all intermediate function values
-    otherwise: returns tuple of result vector and final training score
+    otherwise: returns tuple of result vector, final training score and number of iterations (black box evaluations)
 
     """
     # define black box function
@@ -157,8 +157,6 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         verbose=False
     )
 
-    #plot_convergence(optimizer).figure.savefig("convergence.png")
-
     if (discretization_method == "round" or discretization_method == "probabilistic_round") and n_features is not None:
         # to limit the number of selected features on "round" or "probabilistic_round" we use the n highest features after the last bayesian iteration step
         result_vector = discretize(optimizer.x, "n_highest", n_features)
@@ -173,7 +171,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         return result_vector, result_vector_set, result_fun_set
     else:
         # only return final result vector and final function value
-        return result_vector, 1 - optimizer.fun
+        return result_vector, 1 - optimizer.fun, len(optimizer.x_iters)
 
 
 # Alternative implementation of Bayesian optimization feature selection
