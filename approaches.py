@@ -1,5 +1,5 @@
 from bayesian_algorithms import skopt
-from comparison_algorithms import rfe, sfs, sfm, n_best_anova_f, n_best_mutual, pymrmr_fs_mid, pymrmr_fs_miq
+from comparison_algorithms import rfe, sfs, n_best_anova_f, n_best_mutual, pymrmr_fs_mid, pymrmr_fs_miq, sfm_svc, sfm_logistic_regression, sfm_random_forest, sfm_k_neighbours
 
 # Estimator and metric properties (choosing estimator cheatsheet: https://scikit-learn.org/stable/tutorial/machine_learning_map/index.html)
 classification_estimators = {
@@ -7,14 +7,14 @@ classification_estimators = {
         #"accuracy": "Support Vector Classification - Accuracy Score",
         "matthews": "Support Vector Classification - Matthews correlation"
     },
-    "k_neighbours_classifier": {
-         #"accuracy": "k Neighbours Classification - Accuracy Score",
-         "matthews": "k Neighbours Classification - Matthews correlation"
-    },
-    "random_forest": {
-        #"accuracy": "Random Forest - Accuracy Score",
-        "matthews": "Random Forest - Matthews correlation"
-    },
+    #"k_neighbours_classifier": {
+    #     #"accuracy": "k Neighbours Classification - Accuracy Score",
+    #     "matthews": "k Neighbours Classification - Matthews correlation"
+    #},
+    #"random_forest": {
+    #    #"accuracy": "Random Forest - Accuracy Score",
+    #    "matthews": "Random Forest - Matthews correlation"
+    #},
     "logistic_regression": {
         #"accuracy": "Logistic Regression Classifier - Accuracy Score",
         "matthews": "Logistic Regression Classifier - Matthews correlation"
@@ -66,6 +66,9 @@ comparison_approaches = {
         rfe: "Recursive Feature Selection"
     },
     "embedded": {
-        sfm: "Select From Model"
+        sfm_svc: "SFM SVC Linear",
+        sfm_k_neighbours: "SFM k Nearest Neighbour" ,
+        sfm_random_forest: "SFM Random Forest",
+        sfm_logistic_regression: "SFM Logistic Regression"
     }
 }

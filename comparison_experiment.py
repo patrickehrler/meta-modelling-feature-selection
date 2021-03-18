@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import time
 
-from comparison_algorithms import rfe, sfs, sfm
+from comparison_algorithms import rfe, sfs, sfm_svc, sfm_logistic_regression, sfm_random_forest, sfm_k_neighbours
 from utils import get_score, add_testing_score
 import approaches
 import config
@@ -159,7 +159,7 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
         columns=approaches.comparison_parameters+["Duration", "Vector", "Training Score"])
     for approach, approach_descr in approaches.comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
-            if (algo is rfe or algo is sfm or algo is sfs) and estimator == "k_neighbours_classifier":
+            if (algo is rfe or algo is sfm_svc or algo is sfm_logistic_regression or algo is sfm_random_forest or algo is sfm_k_neighbours or algo is sfs) and estimator == "k_neighbours_classifier":
                 # k nearest neighbors does not support weights (needed for some wrapper and embedded approaches)
                 queue.put(1)  # increase progress bar
             else:
