@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import time
 
-from comparison_algorithms import rfe, sfs, sfm_svc, sfm_logistic_regression, sfm_random_forest, sfm_k_neighbours
+from comparison_algorithms import rfe, sfs, sfm_svc, sfm_logistic_regression, sfm_random_forest
 from utils import get_score, add_testing_score
 import approaches
 import config
@@ -159,20 +159,16 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
         columns=approaches.comparison_parameters+["Duration", "Vector", "Training Score"])
     for approach, approach_descr in approaches.comparison_approaches.items():
         for algo, algo_descr in approach_descr.items():
-            if (algo is rfe or algo is sfm_svc or algo is sfm_logistic_regression or algo is sfm_random_forest or algo is sfm_k_neighbours or algo is sfs) and estimator == "k_neighbours_classifier":
-                # k nearest neighbors does not support weights (needed for some wrapper and embedded approaches)
+            for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
+                start_time = time.time()
+                vector = algo(data=data_training, target=target_training,
+                              n_features=n_features, estimator=estimator)
+                duration = time.time() - start_time
+                score = get_score(data_training, data_training, target_training, target_training, vector,
+                                  estimator, metric)
+                df_results.loc[len(df_results)] = [
+                    approach, algo_descr, n_features, duration, vector, score]
                 queue.put(1)  # increase progress bar
-            else:
-                for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                    start_time = time.time()
-                    vector = algo(data=data_training, target=target_training,
-                                  n_features=n_features, estimator=estimator)
-                    duration = time.time() - start_time
-                    score = get_score(data_training, data_training, target_training, target_training, vector,
-                                      estimator, metric)
-                    df_results.loc[len(df_results)] = [
-                        approach, algo_descr, n_features, duration, vector, score]
-                    queue.put(1)  # increase progress bar
 
     # generate test scores
     df_results_with_test_scores = add_testing_score(
@@ -319,7 +315,7 @@ def experiment_all_datasets_and_estimators():
                         bayesian, comparison, without_fs = __run_all_bayesian_comparison(
                             dataset_id, estimator, metric, config.n_calls, queue)
                         # Write grouped results to csv-file
-                        bayesian.to_csv("results/comparison_bayesian_experiment/" + task + "/bay_opt_" +
+                        bayesian.to_csv("results/comparison_bayesian_experiment/" + task + "/bayopt_" +
                                         str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
                         comparison.to_csv(
                             "results/comparison_bayesian_experiment/" + task + "/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)

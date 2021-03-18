@@ -71,17 +71,14 @@ def rfe(data, target, n_features=10, estimator="linear_regression"):
 
     return result_vector
 
-def sfm_svc(data, target, n_features=None):
+def sfm_svc(data, target, n_features=None, estimator=None):
     return __sfm(data, target, n_features, "svc_linear")
 
-def sfm_logistic_regression(data, target, n_features=None):
+def sfm_logistic_regression(data, target, n_features=None, estimator=None):
     return __sfm(data, target, n_features, "logistic_regression")
 
-def sfm_random_forest(data, target, n_features=None):
+def sfm_random_forest(data, target, n_features=None, estimator=None):
     return __sfm(data, target, n_features, "random_forest")
-
-def sfm_k_neighbours(data, target, n_features=None):
-    return __sfm(data, target, n_features, "k_neighbours_classifier")
 
 def __sfm(data, target, n_features=None, estimator="linear_regression"):
     """ Run Select From Model (an embedded method)
