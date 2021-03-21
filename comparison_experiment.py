@@ -217,7 +217,7 @@ def __progressbar_listener(q):
         pbar.update(amount)
 
 
-def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, queue):
+def __run_all_bayesian_comparison(data_training, data_test, target_training, target_test, estimator, metric, n_calls, queue):
     """ Run both bayesian and comparison approaches with all possible parameter combinations (only dataset, estimator and metric are fixed)
 
     Keyword arguments:
@@ -230,46 +230,19 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
     Return: tuple of bayesian results, comparison results and results without feature selection
 
     """
-    # Import dataset
-    data, target = fetch_openml(
-        data_id=openml_data_id, return_X_y=True, as_frame=True)
+
 
     # Initialize result dataframe
-    df_bay_opt = pd.DataFrame(columns=approaches.bay_opt_parameters +
-                              ["Duration Black Box", "Duration Overhead" "Number of Iterations", "Vector", "Training Score", "Testing Score"])
+    df_bay_opt = pd.DataFrame(columns=["did", "Estimator", "Metric"] + approaches.bay_opt_parameters +
+                              ["Duration Black Box", "Duration Overhead", "Number of Iterations", "Vector", "Training Score", "Testing Score"])
     df_comparison = pd.DataFrame(
-        columns=approaches.comparison_parameters+["Duration", "Vector", "Training Score", "Testing Score"])
-    df_without_fs = pd.DataFrame(columns=["Training Score", "Testing Score"])
+        columns=["did", "Estimator", "Metric"] + approaches.comparison_parameters+["Duration", "Vector", "Training Score", "Testing Score"])
+    df_without_fs = pd.DataFrame(columns=["did", "Estimator", "Metric"] + ["Training Score", "Testing Score"])
 
-    # Split dataset into testing and training data then run all approaches in parallel
-    kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
-    pool = mp.Pool(processes=config.n_processes)
-    mp_results = []
-    for train_index, test_index in kf:
-        mp_results.append(("comparison", pool.apply_async(__run_all_comparison, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index], "target_training":target[train_index], "target_test":target[test_index], "estimator":estimator, "metric":metric, "queue":queue})))
-        mp_results.append(("bayesian", pool.apply_async(__run_all_bayesian, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index],
-                                                                                  "target_training":target[train_index], "target_test":target[test_index], "estimator":estimator, "metric":metric, "n_calls":n_calls, "queue":queue})))
-        mp_results.append(("without", pool.apply_async(__run_without_fs, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index],
-                                                                                      "target_training":target[train_index], "target_test":target[test_index], "estimator":estimator, "metric":metric, "queue":queue})))
-
-    # receive results from multiprocessing
-    results_comparison = []
-    results_bay_opt = []
-    results_without_fs = []
-    for approach, r in mp_results:
-        if approach == "comparison":
-            results_comparison.append(r.get())
-        elif approach == "bayesian":
-            results_bay_opt.append(r.get())
-        else:
-            results_without_fs.append(r.get())
-    pool.close()
-    pool.join()
-
-    # Concat bayesian and comparison result-arrays to combined dataframes
-    df_comparison = pd.concat(results_comparison, ignore_index=True)
-    df_bay_opt = pd.concat(results_bay_opt, ignore_index=True)
-    df_without_fs = pd.concat(results_without_fs, ignore_index=True)
+    # run approaches
+    df_bay_opt = __run_all_bayesian(data_training=data_training, data_test=data_test, target_training=target_training, target_test=target_test, estimator=estimator, metric=metric, n_calls=n_calls, queue=queue)
+    df_comparison = __run_all_comparison(data_training=data_training, data_test=data_test, target_training=target_training, target_test=target_test, estimator=estimator, metric=metric, queue=queue)
+    df_without_fs = __run_without_fs(data_training=data_training, data_test=data_test, target_training=target_training, target_test=target_test, estimator=estimator, metric=metric, queue=queue)
 
     # add column with number of selected features
     df_bay_opt["Actual Features"] = df_bay_opt.apply(
@@ -277,25 +250,27 @@ def __run_all_bayesian_comparison(openml_data_id, estimator, metric, n_calls, qu
     df_comparison["Actual Features"] = df_comparison.apply(
         lambda row: sum(row["Vector"]), axis=1)
 
+    # add estimator and metric
+    df_bay_opt["Estimator"] = estimator
+    df_bay_opt["Metric"] = metric
+    df_comparison["Estimator"] = estimator
+    df_comparison["Metric"] = metric
+    df_without_fs["Estimator"] = estimator
+    df_without_fs["Metric"] = metric
+
     # convert int to np.int64 to be able to aggrogate
     df_bay_opt["Number of Iterations"] = df_bay_opt.apply(
         lambda row: np.int64(row["Number of Iterations"]), axis=1)
 
-    # Group results of cross-validation runs and determine min, max and mean of score-vaules and selected features
-    df_bay_opt_grouped = df_bay_opt.groupby(approaches.bay_opt_parameters, as_index=False).agg(
-        {"Duration Black Box": ["mean"], "Duration Overhead": ["mean"], "Number of Iterations": ["mean"], "Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
-    df_comparison_grouped = df_comparison.groupby(approaches.comparison_parameters, as_index=False).agg(
-        {"Duration": ["mean"], "Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
-    df_without_fs = df_without_fs.agg(
-        {"Training Score": ["mean"], "Testing Score": ["mean"]})
-
-    return df_bay_opt_grouped, df_comparison_grouped, df_without_fs
+    return df_bay_opt, df_comparison, df_without_fs
 
 
 def experiment_all_datasets_and_estimators():
     """ Runs an experiment involving all bayesian/comparison approaches with all possible parameters, datasets, estimators and metrics.
 
     """
+    pool = mp.Pool(processes=config.n_processes)
+    mp_results = []
     # Initialize queue to syncronize progress bar
     queue = mp.Manager().Queue()
     proc = mp.Process(target=__progressbar_listener, args=(queue,))
@@ -305,22 +280,57 @@ def experiment_all_datasets_and_estimators():
     for task, dataset in config.data_ids.items():
         for dataset_id, flag in dataset.items():
             if flag == True:
-                if task == "classification":
-                    estimators = approaches.classification_estimators
-                else:
-                    raise ValueError("Only classification estimators are supported currently!")
+                # Import dataset
+                data, target = fetch_openml(
+                data_id=dataset_id, return_X_y=True, as_frame=True)
 
-                for estimator, metrics in estimators.items():
-                    for metric, _ in metrics.items():
-                        bayesian, comparison, without_fs = __run_all_bayesian_comparison(
-                            dataset_id, estimator, metric, config.n_calls, queue)
-                        # Write grouped results to csv-file
-                        bayesian.to_csv("results/comparison_bayesian_experiment/" + task + "/bayopt_" +
-                                        str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
-                        comparison.to_csv(
-                            "results/comparison_bayesian_experiment/" + task + "/comparison_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
-                        without_fs.to_csv("results/comparison_bayesian_experiment/" + task + "/withoutfs_"+str(dataset_id)+"_"+estimator+"_"+metric+".csv", index=False)
+                # run cross-validation
+                kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)
 
+                for train_index, test_index in kf:
+                    for estimator, metrics in approaches.classification_estimators.items():
+                        for metric, _ in metrics.items():
+                            mp_results.append((dataset_id, pool.apply_async(__run_all_bayesian_comparison, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index], "target_training":target.loc[train_index], "target_test": target.loc[test_index], "estimator":estimator, "metric":metric, "n_calls":config.n_calls, "queue":queue})))
+
+    results = [(r[0],) + r[1].get() for r in mp_results]
+
+    # separate bay opt, comparison and without fs results
+    res_bay_opt = []
+    res_comparison = []
+    res_without_fs = []
+    for dataset_id, bay_opt, comparison, without_fs in results:
+        bay_opt["did"] = dataset_id
+        res_bay_opt.append(bay_opt)
+        comparison["did"] = dataset_id
+        res_comparison.append(comparison)
+        without_fs["did"] = dataset_id
+        res_without_fs.append(without_fs)
+
+    # concat to single dataframes
+    df_bay_opt = pd.concat(res_bay_opt)
+    df_comparison = pd.concat(res_comparison)
+    df_without_fs = pd.concat(res_without_fs)
+        
+    df_bay_opt_grouped = df_bay_opt.groupby(["did", "Estimator", "Metric"] + approaches.bay_opt_parameters, as_index=False).agg(
+        {"Duration Black Box": ["mean"], "Duration Overhead": ["mean"], "Number of Iterations": ["mean"], "Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
+    df_comparison_grouped = df_comparison.groupby(["did", "Estimator", "Metric"] + approaches.comparison_parameters, as_index=False).agg(
+        {"Duration": ["mean"], "Actual Features": ["mean"], "Training Score": ["mean"], "Testing Score": ["mean"]})
+    df_without_fs_grouped = df_without_fs.groupby(["did", "Estimator", "Metric"], as_index=False).agg(
+        {"Training Score": ["mean"], "Testing Score": ["mean"]})
+
+    for name, group in df_bay_opt_grouped.groupby(["did", "Estimator", "Metric"], as_index=False):
+        group.iloc[:, 3:].to_csv("results/comparison_bayesian_experiment/classification" + "/bayopt_" +
+                    str(name[0])+"_"+str(name[1])+"_"+str(name[2])+".csv", index=False)
+    for name, group in df_comparison_grouped.groupby(["did", "Estimator", "Metric"], as_index=False):
+        group.iloc[:, 3:].to_csv("results/comparison_bayesian_experiment/classification" + "/comparison_" +
+                    str(name[0])+"_"+str(name[1])+"_"+str(name[2])+".csv", index=False)
+    for name, group in df_without_fs_grouped.groupby(["did", "Estimator", "Metric"], as_index=False):
+        group.iloc[:, 3:].to_csv("results/comparison_bayesian_experiment/classification" + "/withoutfs_" +
+                    str(name[0])+"_"+str(name[1])+"_"+str(name[2])+".csv", index=False)
+
+
+    pool.close()
+    pool.join()
     queue.put(None)
     proc.join()
 
