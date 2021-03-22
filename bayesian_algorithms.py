@@ -45,9 +45,10 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
 
     Return:
     if intermediate_results is True: returns a tuple of the result vector, a set of all intermediate vectors and a set of all intermediate function values
-    otherwise: returns tuple of result vector, final training score, number of iterations (black box evaluations) and the duration used for all black box evaluations
+    otherwise: returns tuple of result vector, final training score, number of iterations (black box evaluations) and the duration used for all black box evaluations and overhead
 
     """
+    start_time = time.time()
 
     # create list to store execution time of each black box evaluation
     black_box_duration = list()
@@ -166,6 +167,9 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         result_vector = discretize(
             optimizer.x, discretization_method, n_features)
 
+    duration = time.time() - start_time
+    duration_overhead = duration - black_box_duration
+
     if intermediate_results == True:
         # return set of all vectors and all function values
         result_vector_set = optimizer.x_iters
@@ -175,7 +179,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         # return final result vector and final function value, the number of iterations and the total black box evaluation time
         number_of_iterations = len(optimizer.x_iters)
         sum_black_box_duration = sum(black_box_duration)
-        return result_vector, 1 - optimizer.fun, number_of_iterations, sum_black_box_duration
+        return result_vector, 1 - optimizer.fun, number_of_iterations, sum_black_box_duration, duration_overhead
 
 
 # Alternative implementation of Bayesian optimization feature selection

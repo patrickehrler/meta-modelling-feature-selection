@@ -99,42 +99,46 @@ def __run_all_bayesian(data_training, data_test, target_training, target_test, e
                                 # hamming kernel only for categorical and binary search-spaces
                                 if discr == "categorical":
                                     for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                        start_time = time.time()
-                                        vector, score, nr_iters, black_box_duration = algo(data=data_training, target=target_training, learning_method=learn,
+                                        vector, score, nr_iters, black_box_duration, overhead_duration = algo(data=data_training, target=target_training, learning_method=learn,
                                                      kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence, n_acq_points=config.n_acq_points)
-                                        duration = time.time() - start_time
-                                        duration_overhead = duration - black_box_duration
                                         df_results.loc[len(df_results)] = [
-                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, black_box_duration, duration_overhead, nr_iters, vector, score]
+                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, black_box_duration, overhead_duration, nr_iters, vector, score]
                                         queue.put(1)  # increase progress bar
                             else:
                                 # Matern and RBF kernels for all discretization methods except categorical
                                 if discr != "categorical":
                                     for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                        start_time = time.time()
-                                        vector, score, nr_iters, black_box_duration = algo(data=data_training, target=target_training, learning_method=learn,
+                                        vector, score, nr_iters, black_box_duration, overhead_duration = algo(data=data_training, target=target_training, learning_method=learn,
                                                      kernel=kernel, discretization_method=discr, n_features=n_features, estimator=estimator, acq_func=acq, metric=metric, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence, n_acq_points=config.n_acq_points)
-                                        duration = time.time() - start_time
-                                        duration_overhead = duration - black_box_duration
                                         df_results.loc[len(df_results)] = [
-                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, black_box_duration, duration_overhead, nr_iters, vector, score]
+                                            algo_descr, learn_descr, kernel_descr, discr_descr, acq, n_features, black_box_duration, overhead_duration, nr_iters, vector, score]
                                         queue.put(1)  # increase progress bar
                     else:
                         # random forests only in categorical search space
                         if discr == "categorical":
                             for n_features in range(config.min_nr_features, config.max_nr_features+1, config.iter_step_nr_features):
-                                start_time = time.time()
-                                vector, score, nr_iters, black_box_duration = algo(data=data_training, target=target_training, learning_method=learn,
+                                vector, score, nr_iters, black_box_duration, overhead_duration = algo(data=data_training, target=target_training, learning_method=learn,
                                                     discretization_method=discr, estimator=estimator, acq_func=acq, metric=metric, n_features=n_features, n_calls=n_calls, cross_validation=config.n_splits_bay_opt, acq_optimizer=acq_optimizer, n_convergence=config.n_convergence, n_acq_points=config.n_acq_points)
-                                duration = time.time() - start_time
-                                duration_overhead = duration - black_box_duration
                                 df_results.loc[len(df_results)] = [
-                                    algo_descr, learn_descr, "-", discr_descr, acq, n_features, black_box_duration, duration_overhead, nr_iters, vector, score]
+                                    algo_descr, learn_descr, "-", discr_descr, acq, n_features, black_box_duration, overhead_duration, nr_iters, vector, score]
                                 queue.put(1)  # increase progress bar
             
     # generate test scores
     df_results_with_test_scores = add_testing_score(
         data_training, data_test, target_training, target_test, df_results, estimator, metric)
+
+    # add column with number of selected features
+    df_results_with_test_scores["Actual Features"] = df_results_with_test_scores.apply(
+        lambda row: sum(row["Vector"]), axis=1)
+    df_results_with_test_scores["Actual Features"] = df_results_with_test_scores.apply(
+        lambda row: sum(row["Vector"]), axis=1)
+
+    # add estimator and metric
+    df_results_with_test_scores["Estimator"] = estimator
+    df_results_with_test_scores["Metric"] = metric
+
+    # convert int to np.int64 to be able to aggrogate
+    df_results_with_test_scores["Number of Iterations"] = df_results_with_test_scores.apply(lambda row: np.int64(row["Number of Iterations"]), axis=1)
 
     return df_results_with_test_scores
 
@@ -174,6 +178,10 @@ def __run_all_comparison(data_training, data_test, target_training, target_test,
     df_results_with_test_scores = add_testing_score(
         data_training, data_test, target_training, target_test, df_results, estimator, metric)
 
+    # add estimator and metric
+    df_results_with_test_scores["Estimator"] = estimator
+    df_results_with_test_scores["Metric"] = metric
+
     return df_results_with_test_scores
 
 def __run_without_fs(data_training, data_test, target_training, target_test, estimator, metric, queue):
@@ -200,6 +208,9 @@ def __run_without_fs(data_training, data_test, target_training, target_test, est
                                       estimator, metric)
     df_results.loc[len(df_results)] = [training_score, testing_score]
 
+    df_results["Estimator"] = estimator
+    df_results["Metric"] = metric
+
     queue.put(1)  # increase progress bar
 
     return df_results
@@ -215,54 +226,6 @@ def __progressbar_listener(q):
     pbar = init_progress_bar()
     for amount in iter(q.get, None):
         pbar.update(amount)
-
-
-def __run_all_bayesian_comparison(data_training, data_test, target_training, target_test, estimator, metric, n_calls, queue):
-    """ Run both bayesian and comparison approaches with all possible parameter combinations (only dataset, estimator and metric are fixed)
-
-    Keyword arguments:
-    openml_data_id -- dataset id from openml.org
-    estimator -- estimator used to predict target-values
-    metric -- metric used to calculate score
-    n_calls -- number of iterations in bayesian optimization
-    queue -- queue to synchronize progress bar
-
-    Return: tuple of bayesian results, comparison results and results without feature selection
-
-    """
-
-
-    # Initialize result dataframe
-    df_bay_opt = pd.DataFrame(columns=["did", "Estimator", "Metric"] + approaches.bay_opt_parameters +
-                              ["Duration Black Box", "Duration Overhead", "Number of Iterations", "Vector", "Training Score", "Testing Score"])
-    df_comparison = pd.DataFrame(
-        columns=["did", "Estimator", "Metric"] + approaches.comparison_parameters+["Duration", "Vector", "Training Score", "Testing Score"])
-    df_without_fs = pd.DataFrame(columns=["did", "Estimator", "Metric"] + ["Training Score", "Testing Score"])
-
-    # run approaches
-    df_bay_opt = __run_all_bayesian(data_training=data_training, data_test=data_test, target_training=target_training, target_test=target_test, estimator=estimator, metric=metric, n_calls=n_calls, queue=queue)
-    df_comparison = __run_all_comparison(data_training=data_training, data_test=data_test, target_training=target_training, target_test=target_test, estimator=estimator, metric=metric, queue=queue)
-    df_without_fs = __run_without_fs(data_training=data_training, data_test=data_test, target_training=target_training, target_test=target_test, estimator=estimator, metric=metric, queue=queue)
-
-    # add column with number of selected features
-    df_bay_opt["Actual Features"] = df_bay_opt.apply(
-        lambda row: sum(row["Vector"]), axis=1)
-    df_comparison["Actual Features"] = df_comparison.apply(
-        lambda row: sum(row["Vector"]), axis=1)
-
-    # add estimator and metric
-    df_bay_opt["Estimator"] = estimator
-    df_bay_opt["Metric"] = metric
-    df_comparison["Estimator"] = estimator
-    df_comparison["Metric"] = metric
-    df_without_fs["Estimator"] = estimator
-    df_without_fs["Metric"] = metric
-
-    # convert int to np.int64 to be able to aggrogate
-    df_bay_opt["Number of Iterations"] = df_bay_opt.apply(
-        lambda row: np.int64(row["Number of Iterations"]), axis=1)
-
-    return df_bay_opt, df_comparison, df_without_fs
 
 
 def experiment_all_datasets_and_estimators():
@@ -290,21 +253,25 @@ def experiment_all_datasets_and_estimators():
                 for train_index, test_index in kf:
                     for estimator, metrics in approaches.classification_estimators.items():
                         for metric, _ in metrics.items():
-                            mp_results.append((dataset_id, pool.apply_async(__run_all_bayesian_comparison, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index], "target_training":target.loc[train_index], "target_test": target.loc[test_index], "estimator":estimator, "metric":metric, "n_calls":config.n_calls, "queue":queue})))
+                            # run approaches
+                            mp_results.append(("bayopt", dataset_id, pool.apply_async(__run_all_bayesian, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index], "target_training":target.loc[train_index], "target_test":target.loc[test_index], "estimator":estimator, "metric":metric, "n_calls":config.n_calls, "queue":queue})))
+                            mp_results.append(("comparison", dataset_id, pool.apply_async(__run_all_comparison, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index], "target_training":target.loc[train_index], "target_test":target.loc[test_index], "estimator":estimator, "metric":metric, "queue":queue})))
+                            mp_results.append(("withoutfs", dataset_id, pool.apply_async(__run_without_fs, [], {"data_training":data.loc[train_index], "data_test":data.loc[test_index], "target_training":target.loc[train_index], "target_test":target.loc[test_index], "estimator":estimator, "metric":metric, "queue":queue})))
 
-    results = [(r[0],) + r[1].get() for r in mp_results]
+    results = [(r[0],r[1],) + r[2].get() for r in mp_results]
 
     # separate bay opt, comparison and without fs results
     res_bay_opt = []
     res_comparison = []
     res_without_fs = []
-    for dataset_id, bay_opt, comparison, without_fs in results:
-        bay_opt["did"] = dataset_id
-        res_bay_opt.append(bay_opt)
-        comparison["did"] = dataset_id
-        res_comparison.append(comparison)
-        without_fs["did"] = dataset_id
-        res_without_fs.append(without_fs)
+    for approach, dataset_id, res in results:
+        res["did"] = dataset_id # add dataset id to dataframe
+        if approach == "bayopt":
+            res_bay_opt.append(res)
+        elif approach == "comparison":
+            res_comparison.append(res)
+        elif approach == "withoutfs":
+            res_without_fs.append(res)
 
     # concat to single dataframes
     df_bay_opt = pd.concat(res_bay_opt)
