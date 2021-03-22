@@ -30,6 +30,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     learning_method -- model used for Bayesian optimization (GP or RF)
     discretization_method -- define method on how to work with search space
     estimator -- estimator used to determine score
+    metric -- calculate score based on metric
     acq_func -- aquisition function to be used
     n_calls -- number of iterations
     intermediate_results -- if True a set of result vectors of each iteration step will be returned
@@ -167,8 +168,10 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
         result_vector = discretize(
             optimizer.x, discretization_method, n_features)
 
+    # calculate duration
+    sum_black_box_duration = sum(black_box_duration)
     duration = time.time() - start_time
-    duration_overhead = duration - black_box_duration
+    duration_overhead = duration - sum_black_box_duration
 
     if intermediate_results == True:
         # return set of all vectors and all function values
@@ -178,7 +181,7 @@ def skopt(data, target, n_features=None, kernel=None, learning_method="GP", disc
     else:
         # return final result vector and final function value, the number of iterations and the total black box evaluation time
         number_of_iterations = len(optimizer.x_iters)
-        sum_black_box_duration = sum(black_box_duration)
+        
         return result_vector, 1 - optimizer.fun, number_of_iterations, sum_black_box_duration, duration_overhead
 
 
