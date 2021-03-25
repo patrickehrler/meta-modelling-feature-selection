@@ -64,7 +64,7 @@ def experiment_bayesian_iter_performance():
                                                                 skopt, [], {"data":data.loc[train_index], "target":target.loc[train_index], "n_features":n_features, "kernel":kernel, "learning_method":learning_method, "discretization_method":discretization_method, "estimator":estimator, "metric":metric, "acq_func":acq, "n_calls":config.max_calls, "intermediate_results":True, "penalty_weight":1, "cross_validation":config.n_splits_bay_opt, "acq_optimizer":acq_optimizer, "n_convergence":None, "n_acq_points":config.n_acq_points})))
                                             else:
                                                 # random forest only for categorical search-spaces
-                                                if learning_method == "categorical":
+                                                if discretization_method == "categorical":
                                                     mp_results.append((dataset_id, estimator, metric, learning_method, "-", discretization_method, acq, n_features, test_index, pool.apply_async(
                                                         skopt, [], {"data":data.loc[train_index], "target":target.loc[train_index], "n_features":n_features, "kernel":None, "learning_method":learning_method, "discretization_method":discretization_method, "estimator":estimator, "metric":metric, "acq_func":acq, "n_calls":config.max_calls, "intermediate_results":True, "penalty_weight":0, "cross_validation":config.n_splits_bay_opt, "acq_optimizer":acq_optimizer, "n_convergence":None, "n_acq_points":config.n_acq_points})))
 
