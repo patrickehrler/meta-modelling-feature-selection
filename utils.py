@@ -43,6 +43,10 @@ def get_score(data_training, data_test, target_training, target_test, mask, esti
         score = matthews_corrcoef(y_true=target_test, y_pred=y_pred)
     else:
         raise ValueError("Invalid metric")
+    
+    # norm to only positive scores
+    if score < 0:
+        score = 0
 
     return score
 
