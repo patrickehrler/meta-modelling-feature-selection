@@ -1,2 +1,7 @@
-.ipynb_checkpoints
-*/.ipynb_checkpoints/*
+*
+
+!/comparison_experiment_plots
+!/iter_experiment_plots
+!*.ipyn
+!.gitignore
+
