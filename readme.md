@@ -37,6 +37,10 @@ Results are stored in the folder "results/".
 
 To leave the virtualenv environment enter "deactivate".
 
+### Create plots
+All plots of the thesis can be created using the Jupyter notebook: [jupyter-notebook/evaluation.ipynb](jupyter-notebook/evaluation.ipynb).
+They are then saved as PDF in the folders "jupyter-notebook/iter_experiment_plots" and "jupyter-notebook/comparison_experiment_plots".
+
 ## Repository Structure
 - **jupyter-notebook/** Folder that consist the experiment of the proposal presentation and visualization for the final work.
 - **results/** Folder where the results of the experiments are saved.
