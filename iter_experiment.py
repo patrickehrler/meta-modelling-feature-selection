@@ -12,9 +12,12 @@ import config
 
 def experiment_bayesian_iter_performance():
     """ Runs bayesian optimization to compare the performance depending on the iteration steps for all datasets/estimators/metrics.
-    Attention:  - all approaches run with fixed number of to be selected features (most practice relevant)
-                - Training score is the actual final function value used for optimization (might be 1 for "round" or "probabilistic_round" because many features can be selected)
-                - Testing score is the score on the test data based on the n highest features (of the final vector)
+
+    Attention:  - all approaches run with fixed number of to be selected features 
+                - Training score is the optimal function value if the optimization would stop after this iteration step
+                - Testing score is the score on the test data based on the optimal function's vector 
+                  (n highest might be applied of number of selected features is higher than it should be)
+                - one progressbar is displayed per dataset
     """
 
     for task, dataset in config.data_ids.items():
