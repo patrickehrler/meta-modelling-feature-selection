@@ -316,6 +316,10 @@ def experiment_all_datasets_and_estimators():
                 # Import dataset
                 data, target = fetch_openml(
                 data_id=dataset_id, return_X_y=True, as_frame=True)
+                
+                for element in config.drop_list:
+                    if element in data.columns.values:
+                        data = data.drop(element, axis=1)
 
                 # run cross-validation
                 kf = KFold(n_splits=config.n_splits, shuffle=True).split(data)

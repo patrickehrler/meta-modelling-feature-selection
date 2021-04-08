@@ -26,6 +26,10 @@ def experiment_bayesian_iter_performance():
                 # import dataset
                 data, target = fetch_openml(
                     data_id=dataset_id, return_X_y=True, as_frame=True)
+                
+                for element in config.drop_list:
+                    if element in data.columns.values:
+                        data = data.drop(element, axis=1)
 
                 # create multiprocess pool
                 pool = mp.Pool(processes=config.n_processes)

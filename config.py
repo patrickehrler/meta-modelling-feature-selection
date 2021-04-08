@@ -35,7 +35,7 @@ max_nr_features = 20 # maximum number of features
 iter_step_nr_features = 5 # step size
 
 # 2.5 Number of points to evaluate of the acquisition function
-n_acq_points = 10000
+n_acq_points = 5000
 
 # 2.5. Datasets used
 # numbers represent openml.org dataset ids
@@ -53,8 +53,6 @@ data_ids = {
         1041: False,
         1042: False,
         1233: False,
-        1457: False,
-        1458: False,
         1468: False,
         1485: False,
         1501: False,
@@ -84,3 +82,6 @@ data_ids = {
         #1510: False # 30 features
     }
 }
+
+# 2.6 Datset column drop list (these columns are removed if they appear in a dataset)
+drop_list = ["runstatus", "instance_id"]
