@@ -2,4 +2,3 @@
 *
 # ... except for this one.
 !.gitignore
-!/dataset_plots
